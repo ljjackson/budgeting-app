@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import type { Account } from '../api/client';
+import type { Account, CreateAccountRequest } from '../api/client';
 import { parseCurrency } from '../utils/currency';
 
 interface Props {
   account?: Account | null;
-  onSubmit: (data: { name: string; type: string; starting_balance?: number }) => void;
+  onSubmit: (data: CreateAccountRequest) => void;
   onCancel: () => void;
 }
 
@@ -24,7 +24,7 @@ export default function AccountForm({ account, onSubmit, onCancel }: Props) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const data: { name: string; type: string; starting_balance?: number } = { name, type };
+    const data: CreateAccountRequest = { name, type };
     if (!account && startingBalance) {
       data.starting_balance = parseCurrency(startingBalance);
     }

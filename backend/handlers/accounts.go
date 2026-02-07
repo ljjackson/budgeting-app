@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type CreateAccountInput struct {
@@ -32,22 +33,27 @@ func CreateAccount(c *gin.Context) {
 		return
 	}
 	account := models.Account{Name: input.Name, Type: input.Type}
-	if err := database.DB.Create(&account).Error; err != nil {
+	err := database.DB.Transaction(func(db *gorm.DB) error {
+		if err := db.Create(&account).Error; err != nil {
+			return err
+		}
+		if input.StartingBalance != nil && *input.StartingBalance != 0 {
+			tx := models.Transaction{
+				AccountID:   account.ID,
+				Amount:      *input.StartingBalance,
+				Type:        "income",
+				Description: "Starting balance",
+				Date:        time.Now().Format("2006-01-02"),
+			}
+			if err := db.Create(&tx).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create account"})
 		return
-	}
-	if input.StartingBalance != nil && *input.StartingBalance != 0 {
-		tx := models.Transaction{
-			AccountID:   account.ID,
-			Amount:      *input.StartingBalance,
-			Type:        "income",
-			Description: "Starting balance",
-			Date:        time.Now().Format("2006-01-02"),
-		}
-		if err := database.DB.Create(&tx).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Account created but failed to create starting balance transaction"})
-			return
-		}
 	}
 	c.JSON(http.StatusCreated, account)
 }

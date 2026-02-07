@@ -10,7 +10,9 @@ export function formatCurrency(cents: number): string {
 
 /** Convert a decimal pound string (e.g. from an input field) to integer cents. */
 export function parseCurrency(value: string): number {
-  return Math.round(parseFloat(value) * 100);
+  const n = parseFloat(value);
+  if (isNaN(n)) return 0;
+  return Math.round(n * 100);
 }
 
 /** Convert integer cents to a decimal string for form inputs, e.g. 1234 → "12.34" */

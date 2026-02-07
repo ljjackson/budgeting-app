@@ -11,7 +11,6 @@ interface Props {
 }
 
 export default function TransactionTable({ transactions, categories, onEdit, onDelete, onCategoryChange }: Props) {
-
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full bg-white rounded shadow">

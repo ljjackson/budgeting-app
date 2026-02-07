@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Account } from '../api/client';
+import type { Account, CreateAccountRequest } from '../api/client';
 import { getAccounts, createAccount, updateAccount, deleteAccount } from '../api/client';
 import AccountForm from '../components/AccountForm';
 
@@ -11,7 +11,7 @@ export default function Accounts() {
   const load = () => getAccounts().then(setAccounts);
   useEffect(() => { load(); }, []);
 
-  const handleSubmit = async (data: { name: string; type: string; starting_balance?: number }) => {
+  const handleSubmit = async (data: CreateAccountRequest) => {
     if (editing) {
       await updateAccount(editing.id, data);
     } else {
