@@ -100,13 +100,15 @@ Targets are versioned — editing or removing a target only affects the current 
 
 ## Screenshots
 
-<img width="1919" height="933" alt="Screenshot 2026-02-07 at 17 00 38" src="https://github.com/user-attachments/assets/9b13afcd-91d7-408c-9624-92eacd90c224" />
+![Budget page](screenshots/budget.png)
 
-<img width="1918" height="928" alt="Screenshot 2026-02-07 at 17 00 33" src="https://github.com/user-attachments/assets/efc88c73-365b-48d3-a4fd-61c5e02342db" />
+![Transactions page](screenshots/transactions.png)
 
-<img width="1920" height="929" alt="Screenshot 2026-02-07 at 17 00 28" src="https://github.com/user-attachments/assets/3232d02c-067f-4d97-a98f-8cf2f7655251" />
+![Categories page](screenshots/categories.png)
 
-<img width="1922" height="926" alt="Screenshot 2026-02-07 at 17 00 20" src="https://github.com/user-attachments/assets/79fd6313-6477-4080-813e-10a045f0ae72" />
+![Reports page](screenshots/reports.png)
+
+![Accounts page](screenshots/accounts.png)
 
 ## License
 

@@ -23,6 +23,7 @@ node_modules/
 .claude/settings.json
 .claude/settings.local.json
 
-# Screenshots
+# Screenshots (ignore loose images, but keep screenshots/ dir)
 *.png
 *.jpeg
+!screenshots/*.png
