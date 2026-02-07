@@ -11,7 +11,7 @@ const navItems = [
 
 export default function Layout() {
   return (
-    <div className="flex h-screen bg-background">
+    <div id="app-shell" className="flex h-screen bg-background">
       <aside className="w-56 bg-sidebar-background text-sidebar-foreground flex flex-col border-r border-sidebar-border">
         <div className="p-4 text-xl font-bold border-b border-sidebar-border">Budget App</div>
         <nav className="flex-1 p-2">
