@@ -4,6 +4,7 @@ dist/
 
 # Database
 *.db
+*.db-*
 
 # Dependencies
 node_modules/
