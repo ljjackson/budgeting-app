@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Account, CreateAccountRequest } from '@/api/client';
-import { getAccounts, createAccount, updateAccount, deleteAccount } from '@/api/client';
+import { useAccounts, useCreateAccount, useUpdateAccount, useDeleteAccount } from '@/hooks/useAccounts';
 import AccountForm from '@/components/AccountForm';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,28 +10,27 @@ import {
 } from '@/components/ui/dialog';
 
 export default function Accounts() {
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const { data: accounts = [] } = useAccounts();
+  const createMutation = useCreateAccount();
+  const updateMutation = useUpdateAccount();
+  const deleteMutation = useDeleteAccount();
+
   const [editing, setEditing] = useState<Account | null>(null);
   const [showForm, setShowForm] = useState(false);
 
-  const load = () => getAccounts().then(setAccounts);
-  useEffect(() => { load(); }, []);
-
   const handleSubmit = async (data: CreateAccountRequest) => {
     if (editing) {
-      await updateAccount(editing.id, data);
+      await updateMutation.mutateAsync({ id: editing.id, data });
     } else {
-      await createAccount(data);
+      await createMutation.mutateAsync(data);
     }
     setShowForm(false);
     setEditing(null);
-    load();
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this account?')) return;
-    await deleteAccount(id);
-    load();
+    await deleteMutation.mutateAsync(id);
   };
 
   return (

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Account } from '@/api/client';
-import { importCSV } from '@/api/client';
+import { useImportCSV } from '@/hooks/useTransactions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,27 +16,25 @@ interface Props {
 export default function CsvImport({ accounts, onImported }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [accountId, setAccountId] = useState<number>(0);
-  const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const importMutation = useImportCSV();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file || !accountId) return;
 
-    setLoading(true);
     setResult(null);
     setError(null);
 
     try {
-      const res = await importCSV(file, accountId);
+      const res = await importMutation.mutateAsync({ file, accountId });
       setResult(`Imported ${res.imported} transactions`);
       setFile(null);
       onImported();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Import failed');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -71,9 +69,9 @@ export default function CsvImport({ accounts, onImported }: Props) {
         </div>
         <Button
           type="submit"
-          disabled={loading || !file || !accountId}
+          disabled={importMutation.isPending || !file || !accountId}
         >
-          {loading ? 'Importing...' : 'Import'}
+          {importMutation.isPending ? 'Importing...' : 'Import'}
         </Button>
       </div>
       {result && <p className="text-sm text-green-600">{result}</p>}

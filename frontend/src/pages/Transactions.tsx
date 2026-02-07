@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import type { Transaction, Account, Category } from '@/api/client';
+import { useState, useMemo } from 'react';
+import type { Transaction } from '@/api/client';
+import { useAccounts } from '@/hooks/useAccounts';
+import { useCategories } from '@/hooks/useCategories';
 import {
-  getTransactions, createTransaction, updateTransaction, deleteTransaction,
-  getAccounts, getCategories,
-} from '@/api/client';
+  useTransactionList, useCreateTransaction, useUpdateTransaction, useDeleteTransaction,
+} from '@/hooks/useTransactions';
 import TransactionForm from '@/components/TransactionForm';
 import TransactionTable from '@/components/TransactionTable';
 import CsvImport from '@/components/CsvImport';
@@ -24,13 +25,10 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-const PAGE_SIZE = 50;
-
 export default function Transactions() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { data: accounts = [] } = useAccounts();
+  const { data: categories = [] } = useCategories();
+
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -40,17 +38,12 @@ export default function Transactions() {
   const [currentYear, setCurrentYear] = useState(now.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(now.getMonth());
 
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
-
   // Filters
   const [filterAccount, setFilterAccount] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [search, setSearch] = useState('');
 
   const prevMonth = () => {
-    setLoading(true);
     if (currentMonth === 0) {
       setCurrentMonth(11);
       setCurrentYear(currentYear - 1);
@@ -60,7 +53,6 @@ export default function Transactions() {
   };
 
   const nextMonth = () => {
-    setLoading(true);
     if (currentMonth === 11) {
       setCurrentMonth(0);
       setCurrentYear(currentYear + 1);
@@ -69,69 +61,35 @@ export default function Transactions() {
     }
   };
 
-  const buildDateParams = () => {
+  const filters = useMemo(() => {
     const dateFrom = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`;
     const lastDay = new Date(currentYear, currentMonth + 1, 0).getDate();
     const dateTo = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-    return { date_from: dateFrom, date_to: dateTo };
-  };
-
-  const loadTransactions = () => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    const params: Record<string, string> = {
-      ...buildDateParams(),
-      limit: String(PAGE_SIZE),
-      offset: '0',
-    };
+    const params: Record<string, string> = { date_from: dateFrom, date_to: dateTo };
     if (filterAccount) params.account_id = filterAccount;
     if (filterCategory) params.category_id = filterCategory;
     if (search) params.search = search;
-    setLoading(true);
-    getTransactions(params, controller.signal)
-      .then(({ data, total }) => {
-        setTransactions(data);
-        setTotalCount(total);
-      })
-      .catch((e) => { if (e.name !== 'AbortError') throw e; })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-  };
+    return params;
+  }, [currentYear, currentMonth, filterAccount, filterCategory, search]);
 
-  const loadMore = useCallback(() => {
-    if (loadingMore || loading) return;
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useTransactionList(filters);
 
-    const controller = new AbortController();
-    const params: Record<string, string> = {
-      ...buildDateParams(),
-      limit: String(PAGE_SIZE),
-      offset: String(transactions.length),
-    };
-    if (filterAccount) params.account_id = filterAccount;
-    if (filterCategory) params.category_id = filterCategory;
-    if (search) params.search = search;
-    setLoadingMore(true);
-    getTransactions(params, controller.signal)
-      .then(({ data, total }) => {
-        setTransactions((prev) => [...prev, ...data]);
-        setTotalCount(total);
-      })
-      .catch((e) => { if (e.name !== 'AbortError') throw e; })
-      .finally(() => setLoadingMore(false));
-  }, [transactions.length, loadingMore, loading, currentYear, currentMonth, filterAccount, filterCategory, search]);
+  const transactions = useMemo(
+    () => data?.pages.flatMap((p) => p.data) ?? [],
+    [data],
+  );
 
-  const loadMeta = () => {
-    getAccounts().then(setAccounts);
-    getCategories().then(setCategories);
-  };
+  const createMutation = useCreateTransaction();
+  const updateMutation = useUpdateTransaction();
+  const deleteMutation = useDeleteTransaction();
 
-  useEffect(() => { loadMeta(); }, []);
-  useEffect(() => { loadTransactions(); }, [filterAccount, filterCategory, search, currentYear, currentMonth]);
-
-  const hasMore = transactions.length < totalCount;
-
-  const handleSubmit = async (data: {
+  const handleSubmit = async (txnData: {
     account_id: number;
     category_id: number | null;
     amount: number;
@@ -140,24 +98,21 @@ export default function Transactions() {
     type: string;
   }) => {
     if (editing) {
-      await updateTransaction(editing.id, data);
+      await updateMutation.mutateAsync({ id: editing.id, data: txnData });
     } else {
-      await createTransaction(data);
+      await createMutation.mutateAsync(txnData);
     }
     setShowForm(false);
     setEditing(null);
-    loadTransactions();
   };
 
   const handleCategoryChange = async (txnId: number, categoryId: number | null) => {
-    await updateTransaction(txnId, { category_id: categoryId } as Partial<Transaction>);
-    loadTransactions();
+    await updateMutation.mutateAsync({ id: txnId, data: { category_id: categoryId } as Partial<Transaction> });
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this transaction?')) return;
-    await deleteTransaction(id);
-    loadTransactions();
+    await deleteMutation.mutateAsync(id);
   };
 
   return (
@@ -193,7 +148,7 @@ export default function Transactions() {
             <DialogTitle>Import CSV</DialogTitle>
             <DialogDescription>Upload a CSV file to import transactions.</DialogDescription>
           </DialogHeader>
-          <CsvImport accounts={accounts} onImported={() => { loadTransactions(); setShowImport(false); }} />
+          <CsvImport accounts={accounts} onImported={() => setShowImport(false)} />
         </DialogContent>
       </Dialog>
 
@@ -277,10 +232,10 @@ export default function Transactions() {
       <TransactionTable
         transactions={transactions}
         categories={categories}
-        loading={loading}
-        loadingMore={loadingMore}
-        hasMore={hasMore}
-        onLoadMore={loadMore}
+        loading={isLoading}
+        loadingMore={isFetchingNextPage}
+        hasMore={!!hasNextPage}
+        onLoadMore={() => fetchNextPage()}
         onEdit={(txn) => { setEditing(txn); setShowForm(true); }}
         onDelete={handleDelete}
         onCategoryChange={handleCategoryChange}

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Category } from '@/api/client';
-import { getCategories, createCategory, updateCategory, deleteCategory } from '@/api/client';
+import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/hooks/useCategories';
 import CategoryForm from '@/components/CategoryForm';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,28 +9,27 @@ import {
 } from '@/components/ui/dialog';
 
 export default function Categories() {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { data: categories = [] } = useCategories();
+  const createMutation = useCreateCategory();
+  const updateMutation = useUpdateCategory();
+  const deleteMutation = useDeleteCategory();
+
   const [editing, setEditing] = useState<Category | null>(null);
   const [showForm, setShowForm] = useState(false);
 
-  const load = () => getCategories().then(setCategories);
-  useEffect(() => { load(); }, []);
-
   const handleSubmit = async (data: { name: string; colour: string }) => {
     if (editing) {
-      await updateCategory(editing.id, data);
+      await updateMutation.mutateAsync({ id: editing.id, data });
     } else {
-      await createCategory(data);
+      await createMutation.mutateAsync(data);
     }
     setShowForm(false);
     setEditing(null);
-    load();
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this category?')) return;
-    await deleteCategory(id);
-    load();
+    await deleteMutation.mutateAsync(id);
   };
 
   return (

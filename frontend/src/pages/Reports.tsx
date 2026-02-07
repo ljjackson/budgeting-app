@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
-import type { CategoryReport, AccountReport } from '@/api/client';
-import { getReportByCategory, getReportByAccount } from '@/api/client';
+import { useState, useMemo } from 'react';
+import { useReportByCategory, useReportByAccount } from '@/hooks/useReports';
 import { CategoryChart, AccountChart } from '@/components/ReportCharts';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,22 +9,20 @@ import {
 } from '@/components/ui/select';
 
 export default function Reports() {
-  const [categoryData, setCategoryData] = useState<CategoryReport[]>([]);
-  const [accountData, setAccountData] = useState<AccountReport[]>([]);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [txnType, setTxnType] = useState('expense');
 
-  const load = () => {
-    const params: Record<string, string> = {};
-    if (dateFrom) params.date_from = dateFrom;
-    if (dateTo) params.date_to = dateTo;
-    if (txnType) params.type = txnType;
-    getReportByCategory(params).then(setCategoryData);
-    getReportByAccount(params).then(setAccountData);
-  };
+  const params = useMemo(() => {
+    const p: Record<string, string> = {};
+    if (dateFrom) p.date_from = dateFrom;
+    if (dateTo) p.date_to = dateTo;
+    if (txnType) p.type = txnType;
+    return p;
+  }, [dateFrom, dateTo, txnType]);
 
-  useEffect(() => { load(); }, [dateFrom, dateTo, txnType]);
+  const { data: categoryData = [] } = useReportByCategory(params);
+  const { data: accountData = [] } = useReportByAccount(params);
 
   return (
     <div>
