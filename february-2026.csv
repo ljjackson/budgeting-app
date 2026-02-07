@@ -1,0 +1,22 @@
+date,description,amount,type
+2026-02-01,Salary - Main,2600.00,income
+2026-02-03,Salary - Partner,1500.00,income
+2026-02-01,Mortgage Payment,-1200.00,expense
+2026-02-01,Council Tax,-185.00,expense
+2026-02-01,Savings Transfer,-2000.00,expense
+2026-02-01,Gym Membership - PureGym,-35.99,expense
+2026-02-02,Broadband - BT,-42.00,expense
+2026-02-02,Amazon - Kindle Case,-24.99,expense
+2026-02-02,Costa Coffee,-8.90,expense
+2026-02-03,Energy - British Gas,-145.00,expense
+2026-02-03,Shell Petrol Station,-58.50,expense
+2026-02-03,Mobile Phone - EE,-35.00,expense
+2026-02-04,Netflix,-15.99,expense
+2026-02-04,Spotify,-10.99,expense
+2026-02-04,Sainsburys,-52.18,expense
+2026-02-05,Nandos,-42.50,expense
+2026-02-05,Water Bill - Thames Water,-44.00,expense
+2026-02-06,Tesco,-67.43,expense
+2026-02-06,Greggs,-6.80,expense
+2026-02-07,Aldi,-38.72,expense
+2026-02-07,Uber,-12.50,expense

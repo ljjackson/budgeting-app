@@ -45,6 +45,7 @@ func main() {
 
 		api.GET("/budget", handlers.GetBudget)
 		api.PUT("/budget/allocate", handlers.AllocateBudget)
+		api.GET("/budget/category-average", handlers.GetCategoryAverage)
 	}
 
 	r.Run(":8080")

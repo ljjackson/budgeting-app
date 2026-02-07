@@ -20,5 +20,6 @@ export const queryKeys = {
   budget: {
     all: ['budget'] as const,
     month: (m: string) => ['budget', m] as const,
+    categoryAverage: (categoryId: number, month: string) => ['budget', 'category-average', categoryId, month] as const,
   },
 };

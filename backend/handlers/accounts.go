@@ -28,6 +28,7 @@ func ListAccounts(c *gin.Context) {
 	results := make([]AccountResponse, len(accounts))
 	for i, a := range accounts {
 		var exists bool
+		// TODO Batch the query, we don't want to do an N+1.
 		database.DB.Raw("SELECT EXISTS(SELECT 1 FROM transactions WHERE account_id = ?)", a.ID).Scan(&exists)
 		results[i] = AccountResponse{Account: a, HasTransactions: exists}
 	}
@@ -45,6 +46,8 @@ func CreateAccount(c *gin.Context) {
 		return
 	}
 	account := models.Account{Name: input.Name, Type: input.Type}
+
+	// Should this live in a separate service / repository? This has gone beyond just creating an account now.
 	err := database.DB.Transaction(func(db *gorm.DB) error {
 		if err := db.Create(&account).Error; err != nil {
 			return err
@@ -61,6 +64,7 @@ func CreateAccount(c *gin.Context) {
 				Amount:      amount,
 				Type:        txType,
 				Description: "Starting balance",
+				// Should we have a default NOW() for dates across the board?	
 				Date:        time.Now().Format("2006-01-02"),
 			}
 			if err := db.Create(&tx).Error; err != nil {

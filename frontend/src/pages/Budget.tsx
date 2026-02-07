@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
+import type { BudgetCategoryRow } from '@/api/client';
 import { useBudget, useAllocateBudget } from '@/hooks/useBudget';
-import { formatCurrency, parseCurrency, centsToDecimal } from '@/utils/currency';
+import { formatCurrency, centsToDecimal, resolveAssignedInput } from '@/utils/currency';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,8 +9,10 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
+import CategoryDetailPanel from '@/components/CategoryDetailPanel';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -25,6 +28,7 @@ export default function Budget() {
   const { data: budget, isLoading } = useBudget(monthStr);
   const allocateMutation = useAllocateBudget();
 
+  const [selectedCategory, setSelectedCategory] = useState<BudgetCategoryRow | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -37,11 +41,13 @@ export default function Budget() {
   }, [editingCategoryId]);
 
   const prevMonth = () => {
+    setSelectedCategory(null);
     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(currentYear - 1); }
     else { setCurrentMonth(currentMonth - 1); }
   };
 
   const nextMonth = () => {
+    setSelectedCategory(null);
     if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(currentYear + 1); }
     else { setCurrentMonth(currentMonth + 1); }
   };
@@ -53,7 +59,8 @@ export default function Budget() {
 
   const commitEdit = () => {
     if (editingCategoryId === null) return;
-    const amount = parseCurrency(editValue);
+    const current = budget?.categories.find(c => c.category_id === editingCategoryId)?.assigned ?? 0;
+    const amount = resolveAssignedInput(editValue, current);
     allocateMutation.mutate({
       month: monthStr,
       category_id: editingCategoryId,
@@ -110,6 +117,21 @@ export default function Budget() {
         </CardContent>
       </Card>
 
+      {/* Uncategorized expenses warning */}
+      {!isLoading && budget && budget.uncategorized_expenses > 0 && (
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-950 dark:text-yellow-200">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>
+            You have{' '}
+            <span className="font-medium">{budget.uncategorized_expenses}</span>{' '}
+            uncategorised {budget.uncategorized_expenses === 1 ? 'expense' : 'expenses'} this month.{' '}
+            <Link to="/transactions" className="underline hover:no-underline font-medium">
+              Categorise them
+            </Link>
+          </span>
+        </div>
+      )}
+
       {/* Budget table */}
       <Table>
         <TableHeader>
@@ -131,7 +153,10 @@ export default function Budget() {
           ))}
           {!isLoading && budget?.categories.map((row) => (
             <TableRow key={row.category_id}>
-              <TableCell>
+              <TableCell
+                className="cursor-pointer"
+                onClick={() => setSelectedCategory(row)}
+              >
                 <div className="flex items-center gap-2">
                   <span
                     className="inline-block w-3 h-3 rounded-full shrink-0"
@@ -166,12 +191,35 @@ export default function Budget() {
                 'font-medium',
                 row.available >= 0 ? 'text-green-600' : 'text-red-600'
               )}>
-                {formatCurrency(row.available)}
+                {row.available < 0 ? (
+                  <button
+                    className="cursor-pointer underline decoration-dotted hover:decoration-solid"
+                    title={`Quick-assign ${formatCurrency(Math.abs(row.available))} to cover shortfall`}
+                    onClick={() => {
+                      allocateMutation.mutate({
+                        month: monthStr,
+                        category_id: row.category_id,
+                        amount: row.assigned + Math.abs(row.available),
+                      });
+                    }}
+                  >
+                    {formatCurrency(row.available)}
+                  </button>
+                ) : (
+                  formatCurrency(row.available)
+                )}
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+
+      <CategoryDetailPanel
+        open={selectedCategory !== null}
+        onOpenChange={(open) => { if (!open) setSelectedCategory(null); }}
+        category={selectedCategory}
+        month={monthStr}
+      />
     </div>
   );
 }

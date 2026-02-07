@@ -4,6 +4,8 @@ import (
 	"budgetting-app/backend/database"
 	"budgetting-app/backend/models"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,11 +20,12 @@ type budgetCategoryRow struct {
 }
 
 type budgetResponse struct {
-	Month         string              `json:"month"`
-	Income        int64               `json:"income"`
-	TotalAssigned int64               `json:"total_assigned"`
-	ReadyToAssign int64               `json:"ready_to_assign"`
-	Categories    []budgetCategoryRow `json:"categories"`
+	Month                  string              `json:"month"`
+	Income                 int64               `json:"income"`
+	TotalAssigned          int64               `json:"total_assigned"`
+	ReadyToAssign          int64               `json:"ready_to_assign"`
+	UncategorizedExpenses  int64               `json:"uncategorized_expenses"`
+	Categories             []budgetCategoryRow `json:"categories"`
 }
 
 func buildBudgetResponse(month string) (*budgetResponse, error) {
@@ -100,15 +103,20 @@ func buildBudgetResponse(month string) (*budgetResponse, error) {
 		})
 	}
 
-	// 8. ready_to_assign = cumulative income - cumulative total assigned
+	// 8. Count uncategorized expenses this month
+	var uncategorizedExpenses int64
+	database.DB.Raw("SELECT COUNT(*) FROM transactions WHERE type='expense' AND category_id IS NULL AND date >= ? AND date <= ?", firstDay, lastDay).Scan(&uncategorizedExpenses)
+
+	// 9. ready_to_assign = cumulative income - cumulative total assigned
 	readyToAssign := cumulativeIncome - cumulativeTotalAssigned
 
 	return &budgetResponse{
-		Month:         month,
-		Income:        monthIncome,
-		TotalAssigned: totalAssigned,
-		ReadyToAssign: readyToAssign,
-		Categories:    rows,
+		Month:                  month,
+		Income:                 monthIncome,
+		TotalAssigned:          totalAssigned,
+		ReadyToAssign:          readyToAssign,
+		UncategorizedExpenses:  uncategorizedExpenses,
+		Categories:             rows,
 	}, nil
 }
 
@@ -124,6 +132,37 @@ func GetBudget(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, resp)
+}
+
+func GetCategoryAverage(c *gin.Context) {
+	categoryIDStr := c.Query("category_id")
+	month := c.Query("month")
+
+	if categoryIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "category_id is required"})
+		return
+	}
+	categoryID, err := strconv.ParseUint(categoryIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid category_id"})
+		return
+	}
+
+	if month == "" || !validateMonth(month) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "valid month parameter required (YYYY-MM)"})
+		return
+	}
+
+	t, _ := time.Parse("2006-01", month)
+	threeMonthsAgo := t.AddDate(0, -3, 0).Format("2006-01-02")
+	firstOfMonth := t.Format("2006-01-02")
+
+	var total int64
+	database.DB.Raw("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE type='expense' AND category_id=? AND date >= ? AND date < ?", categoryID, threeMonthsAgo, firstOfMonth).Scan(&total)
+
+	average := total / 3
+
+	c.JSON(http.StatusOK, gin.H{"average": average})
 }
 
 func AllocateBudget(c *gin.Context) {

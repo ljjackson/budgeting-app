@@ -164,6 +164,7 @@ export interface BudgetResponse {
   income: number; // cents
   total_assigned: number; // cents
   ready_to_assign: number; // cents
+  uncategorized_expenses: number;
   categories: BudgetCategoryRow[];
 }
 
@@ -178,3 +179,10 @@ export const getBudget = (month: string) =>
 
 export const allocateBudget = (data: AllocateBudgetRequest) =>
   request<BudgetResponse>('/budget/allocate', { method: 'PUT', body: JSON.stringify(data) });
+
+export interface CategoryAverageResponse {
+  average: number; // cents
+}
+
+export const getCategoryAverage = (categoryId: number, month: string) =>
+  request<CategoryAverageResponse>(`/budget/category-average?category_id=${categoryId}&month=${month}`);
