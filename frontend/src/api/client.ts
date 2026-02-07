@@ -147,3 +147,34 @@ export const getReportByAccount = (params?: Record<string, string>) => {
   const query = params ? '?' + new URLSearchParams(params).toString() : '';
   return request<AccountReport[]>(`/reports/by-account${query}`);
 };
+
+// Budget
+
+export interface BudgetCategoryRow {
+  category_id: number;
+  category_name: string;
+  colour: string;
+  assigned: number; // cents
+  activity: number; // cents
+  available: number; // cents
+}
+
+export interface BudgetResponse {
+  month: string;
+  income: number; // cents
+  total_assigned: number; // cents
+  ready_to_assign: number; // cents
+  categories: BudgetCategoryRow[];
+}
+
+export interface AllocateBudgetRequest {
+  month: string;
+  category_id: number;
+  amount: number; // cents
+}
+
+export const getBudget = (month: string) =>
+  request<BudgetResponse>(`/budget?month=${month}`);
+
+export const allocateBudget = (data: AllocateBudgetRequest) =>
+  request<BudgetResponse>('/budget/allocate', { method: 'PUT', body: JSON.stringify(data) });

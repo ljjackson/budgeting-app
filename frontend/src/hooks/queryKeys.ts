@@ -17,4 +17,8 @@ export const queryKeys = {
     byAccount: (params: Record<string, string>) =>
       ['reports', 'by-account', params] as const,
   },
+  budget: {
+    all: ['budget'] as const,
+    month: (m: string) => ['budget', m] as const,
+  },
 };

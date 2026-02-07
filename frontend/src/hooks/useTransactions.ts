@@ -34,6 +34,7 @@ export function useCreateTransaction() {
     onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.budget.all });
       if (variables.account_id) {
         queryClient.setQueryData<Account[]>(queryKeys.accounts.all, (old) =>
           old?.map((a) =>
@@ -53,6 +54,7 @@ export function useUpdateTransaction() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.budget.all });
     },
   });
 }
@@ -65,6 +67,7 @@ export function useDeleteTransaction() {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.budget.all });
     },
   });
 }
@@ -77,6 +80,7 @@ export function useBulkUpdateCategory() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.budget.all });
     },
   });
 }
@@ -89,6 +93,7 @@ export function useImportCSV() {
     onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.budget.all });
       queryClient.setQueryData<Account[]>(queryKeys.accounts.all, (old) =>
         old?.map((a) =>
           a.id === variables.accountId ? { ...a, has_transactions: true } : a

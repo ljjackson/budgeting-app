@@ -13,3 +13,15 @@ func validateAccountType(t string) bool { return validAccountTypes[t] }
 func validateTxnType(t string) bool     { return validTxnTypes[t] }
 func validateColour(c string) bool      { return colourRegex.MatchString(c) }
 func validateDate(d string) bool        { _, err := time.Parse("2006-01-02", d); return err == nil }
+
+var monthRegex = regexp.MustCompile(`^\d{4}-(0[1-9]|1[0-2])$`)
+
+func validateMonth(m string) bool { return monthRegex.MatchString(m) }
+
+// monthDateRange returns the first and last day of the given YYYY-MM month
+func monthDateRange(month string) (string, string) {
+	t, _ := time.Parse("2006-01", month)
+	first := t.Format("2006-01-02")
+	last := t.AddDate(0, 1, -1).Format("2006-01-02")
+	return first, last
+}

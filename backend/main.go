@@ -42,6 +42,9 @@ func main() {
 
 		api.GET("/reports/by-category", handlers.ReportByCategory)
 		api.GET("/reports/by-account", handlers.ReportByAccount)
+
+		api.GET("/budget", handlers.GetBudget)
+		api.PUT("/budget/allocate", handlers.AllocateBudget)
 	}
 
 	r.Run(":8080")

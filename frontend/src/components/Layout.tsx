@@ -2,7 +2,8 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { to: '/', label: 'Transactions' },
+  { to: '/', label: 'Budget' },
+  { to: '/transactions', label: 'Transactions' },
   { to: '/accounts', label: 'Accounts' },
   { to: '/categories', label: 'Categories' },
   { to: '/reports', label: 'Reports' },
@@ -18,6 +19,7 @@ export default function Layout() {
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.to === '/'}
               className={({ isActive }) =>
                 cn(
                   'block px-4 py-2 rounded-md mb-1 text-sm',
