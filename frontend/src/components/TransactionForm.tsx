@@ -1,6 +1,12 @@
-import { useState, useEffect } from 'react';
-import type { Account, Category, Transaction } from '../api/client';
-import { parseCurrency, centsToDecimal } from '../utils/currency';
+import { useState } from 'react';
+import type { Account, Category, Transaction } from '@/api/client';
+import { parseCurrency, centsToDecimal } from '@/utils/currency';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 
 interface Props {
   transaction?: Transaction | null;
@@ -18,25 +24,12 @@ interface Props {
 }
 
 export default function TransactionForm({ transaction, accounts, categories, onSubmit, onCancel }: Props) {
-  const [accountId, setAccountId] = useState<number>(0);
-  const [categoryId, setCategoryId] = useState<number | ''>('');
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [type, setType] = useState('expense');
-
-  useEffect(() => {
-    if (transaction) {
-      setAccountId(transaction.account_id);
-      setCategoryId(transaction.category_id ?? '');
-      setAmount(centsToDecimal(transaction.amount));
-      setDescription(transaction.description);
-      setDate(transaction.date);
-      setType(transaction.type);
-    } else if (accounts.length > 0 && accountId === 0) {
-      setAccountId(accounts[0].id);
-    }
-  }, [transaction, accounts]);
+  const [accountId, setAccountId] = useState<number>(transaction?.account_id ?? accounts[0]?.id ?? 0);
+  const [categoryId, setCategoryId] = useState<number | ''>(transaction?.category_id ?? '');
+  const [amount, setAmount] = useState(transaction ? centsToDecimal(transaction.amount) : '');
+  const [description, setDescription] = useState(transaction?.description ?? '');
+  const [date, setDate] = useState(transaction?.date ?? new Date().toISOString().slice(0, 10));
+  const [type, setType] = useState(transaction?.type ?? 'expense');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,85 +45,90 @@ export default function TransactionForm({ transaction, accounts, categories, onS
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white p-4 rounded shadow mb-4 space-y-3">
+    <form onSubmit={handleSubmit} className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Date</label>
-          <input
+        <div className="space-y-1">
+          <Label>Date</Label>
+          <Input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
             required
-            className="mt-1 block w-full rounded border-gray-300 border px-3 py-2 text-sm"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Type</label>
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-            className="mt-1 block w-full rounded border-gray-300 border px-3 py-2 text-sm"
-          >
-            <option value="expense">Expense</option>
-            <option value="income">Income</option>
-          </select>
+        <div className="space-y-1">
+          <Label>Type</Label>
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="expense">Expense</SelectItem>
+              <SelectItem value="income">Income</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <div className="col-span-2">
-          <label className="block text-sm font-medium text-gray-700">Description</label>
-          <input
+        <div className="col-span-2 space-y-1">
+          <Label>Description</Label>
+          <Input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             required
-            className="mt-1 block w-full rounded border-gray-300 border px-3 py-2 text-sm"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Amount</label>
-          <input
+        <div className="space-y-1">
+          <Label>Amount</Label>
+          <Input
             type="number"
             step="0.01"
             min="0"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             required
-            className="mt-1 block w-full rounded border-gray-300 border px-3 py-2 text-sm"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Account</label>
-          <select
-            value={accountId}
-            onChange={(e) => setAccountId(Number(e.target.value))}
-            required
-            className="mt-1 block w-full rounded border-gray-300 border px-3 py-2 text-sm"
+        <div className="space-y-1">
+          <Label>Account</Label>
+          <Select
+            value={accountId ? String(accountId) : undefined}
+            onValueChange={(v) => setAccountId(Number(v))}
           >
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map((a) => (
+                <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <div className="col-span-2">
-          <label className="block text-sm font-medium text-gray-700">Category</label>
-          <select
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value === '' ? '' : Number(e.target.value))}
-            className="mt-1 block w-full rounded border-gray-300 border px-3 py-2 text-sm"
+        <div className="col-span-2 space-y-1">
+          <Label>Category</Label>
+          <Select
+            value={categoryId === '' ? '__none__' : String(categoryId)}
+            onValueChange={(v) => setCategoryId(v === '__none__' ? '' : Number(v))}
           >
-            <option value="">Uncategorized</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Uncategorized</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <div className="flex gap-2">
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">
+        <Button type="submit">
           {transaction ? 'Update' : 'Create'}
-        </button>
-        <button type="button" onClick={onCancel} className="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-300">
+        </Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

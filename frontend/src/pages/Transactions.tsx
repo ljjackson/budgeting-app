@@ -1,35 +1,125 @@
-import { useState, useEffect } from 'react';
-import type { Transaction, Account, Category } from '../api/client';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import type { Transaction, Account, Category } from '@/api/client';
 import {
   getTransactions, createTransaction, updateTransaction, deleteTransaction,
   getAccounts, getCategories,
-} from '../api/client';
-import TransactionForm from '../components/TransactionForm';
-import TransactionTable from '../components/TransactionTable';
-import CsvImport from '../components/CsvImport';
+} from '@/api/client';
+import TransactionForm from '@/components/TransactionForm';
+import TransactionTable from '@/components/TransactionTable';
+import CsvImport from '@/components/CsvImport';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+const PAGE_SIZE = 50;
 
 export default function Transactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
 
+  // Month navigator
+  const now = new Date();
+  const [currentYear, setCurrentYear] = useState(now.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(now.getMonth());
+
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
   // Filters
   const [filterAccount, setFilterAccount] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
-  const [filterDateFrom, setFilterDateFrom] = useState('');
-  const [filterDateTo, setFilterDateTo] = useState('');
+  const [search, setSearch] = useState('');
+
+  const prevMonth = () => {
+    setLoading(true);
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(currentYear - 1);
+    } else {
+      setCurrentMonth(currentMonth - 1);
+    }
+  };
+
+  const nextMonth = () => {
+    setLoading(true);
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(currentYear + 1);
+    } else {
+      setCurrentMonth(currentMonth + 1);
+    }
+  };
+
+  const buildDateParams = () => {
+    const dateFrom = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const dateTo = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    return { date_from: dateFrom, date_to: dateTo };
+  };
 
   const loadTransactions = () => {
-    const params: Record<string, string> = {};
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const params: Record<string, string> = {
+      ...buildDateParams(),
+      limit: String(PAGE_SIZE),
+      offset: '0',
+    };
     if (filterAccount) params.account_id = filterAccount;
     if (filterCategory) params.category_id = filterCategory;
-    if (filterDateFrom) params.date_from = filterDateFrom;
-    if (filterDateTo) params.date_to = filterDateTo;
-    getTransactions(params).then(setTransactions);
+    if (search) params.search = search;
+    setLoading(true);
+    getTransactions(params, controller.signal)
+      .then(({ data, total }) => {
+        setTransactions(data);
+        setTotalCount(total);
+      })
+      .catch((e) => { if (e.name !== 'AbortError') throw e; })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
   };
+
+  const loadMore = useCallback(() => {
+    if (loadingMore || loading) return;
+
+    const controller = new AbortController();
+    const params: Record<string, string> = {
+      ...buildDateParams(),
+      limit: String(PAGE_SIZE),
+      offset: String(transactions.length),
+    };
+    if (filterAccount) params.account_id = filterAccount;
+    if (filterCategory) params.category_id = filterCategory;
+    if (search) params.search = search;
+    setLoadingMore(true);
+    getTransactions(params, controller.signal)
+      .then(({ data, total }) => {
+        setTransactions((prev) => [...prev, ...data]);
+        setTotalCount(total);
+      })
+      .catch((e) => { if (e.name !== 'AbortError') throw e; })
+      .finally(() => setLoadingMore(false));
+  }, [transactions.length, loadingMore, loading, currentYear, currentMonth, filterAccount, filterCategory, search]);
 
   const loadMeta = () => {
     getAccounts().then(setAccounts);
@@ -37,7 +127,9 @@ export default function Transactions() {
   };
 
   useEffect(() => { loadMeta(); }, []);
-  useEffect(() => { loadTransactions(); }, [filterAccount, filterCategory, filterDateFrom, filterDateTo]);
+  useEffect(() => { loadTransactions(); }, [filterAccount, filterCategory, search, currentYear, currentMonth]);
+
+  const hasMore = transactions.length < totalCount;
 
   const handleSubmit = async (data: {
     account_id: number;
@@ -71,96 +163,124 @@ export default function Transactions() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-gray-800">Transactions</h1>
+        <h1 className="text-2xl font-bold">Transactions</h1>
         <div className="flex gap-2">
-          <button
-            onClick={() => setShowImport(!showImport)}
-            className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
-          >
-            {showImport ? 'Hide Import' : 'Import CSV'}
-          </button>
-          <button
-            onClick={() => { setEditing(null); setShowForm(true); }}
-            className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
-          >
+          <Button variant="secondary" onClick={() => setShowImport(true)}>
+            Import CSV
+          </Button>
+          <Button onClick={() => { setEditing(null); setShowForm(true); }}>
             Add Transaction
-          </button>
+          </Button>
         </div>
       </div>
 
-      {showImport && (
-        <CsvImport accounts={accounts} onImported={loadTransactions} />
-      )}
+      {/* Month navigator */}
+      <div className="flex items-center justify-center gap-2 mb-4">
+        <Button variant="outline" size="icon-sm" onClick={prevMonth}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="w-48 text-center font-medium">
+          {MONTH_NAMES[currentMonth]} {currentYear}
+        </span>
+        <Button variant="outline" size="icon-sm" onClick={nextMonth}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
 
-      {showForm && (
-        <TransactionForm
-          transaction={editing}
-          accounts={accounts}
-          categories={categories}
-          onSubmit={handleSubmit}
-          onCancel={() => { setShowForm(false); setEditing(null); }}
-        />
-      )}
+      <Dialog open={showImport} onOpenChange={setShowImport}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Import CSV</DialogTitle>
+            <DialogDescription>Upload a CSV file to import transactions.</DialogDescription>
+          </DialogHeader>
+          <CsvImport accounts={accounts} onImported={() => { loadTransactions(); setShowImport(false); }} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) { setShowForm(false); setEditing(null); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Edit Transaction' : 'New Transaction'}</DialogTitle>
+            <DialogDescription>
+              {editing ? 'Update the transaction details below.' : 'Fill in the details to create a new transaction.'}
+            </DialogDescription>
+          </DialogHeader>
+          <TransactionForm
+            key={editing?.id ?? 'new'}
+            transaction={editing}
+            accounts={accounts}
+            categories={categories}
+            onSubmit={handleSubmit}
+            onCancel={() => { setShowForm(false); setEditing(null); }}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Filters */}
-      <div className="bg-white p-3 rounded shadow mb-4 flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="block text-xs text-gray-500">Account</label>
-          <select
-            value={filterAccount}
-            onChange={(e) => setFilterAccount(e.target.value)}
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
-          >
-            <option value="">All</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs text-gray-500">Category</label>
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
-          >
-            <option value="">All</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs text-gray-500">From</label>
-          <input
-            type="date"
-            value={filterDateFrom}
-            onChange={(e) => setFilterDateFrom(e.target.value)}
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-gray-500">To</label>
-          <input
-            type="date"
-            value={filterDateTo}
-            onChange={(e) => setFilterDateTo(e.target.value)}
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
-          />
-        </div>
-        {(filterAccount || filterCategory || filterDateFrom || filterDateTo) && (
-          <button
-            onClick={() => { setFilterAccount(''); setFilterCategory(''); setFilterDateFrom(''); setFilterDateTo(''); }}
-            className="text-sm text-gray-500 hover:text-gray-700 underline"
-          >
-            Clear filters
-          </button>
-        )}
-      </div>
+      <Card className="mb-4 py-3">
+        <CardContent className="flex flex-wrap gap-3 items-end">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Account</Label>
+            <Select
+              value={filterAccount || '__all__'}
+              onValueChange={(v) => setFilterAccount(v === '__all__' ? '' : v)}
+            >
+              <SelectTrigger size="sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All</SelectItem>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Category</Label>
+            <Select
+              value={filterCategory || '__all__'}
+              onValueChange={(v) => setFilterCategory(v === '__all__' ? '' : v)}
+            >
+              <SelectTrigger size="sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Search</Label>
+            <Input
+              placeholder="Search descriptions..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 text-sm w-48"
+            />
+          </div>
+          {(filterAccount || filterCategory || search) && (
+            <Button
+              variant="link"
+              size="sm"
+              onClick={() => { setFilterAccount(''); setFilterCategory(''); setSearch(''); }}
+            >
+              Clear filters
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       <TransactionTable
         transactions={transactions}
         categories={categories}
+        loading={loading}
+        loadingMore={loadingMore}
+        hasMore={hasMore}
+        onLoadMore={loadMore}
         onEdit={(txn) => { setEditing(txn); setShowForm(true); }}
         onDelete={handleDelete}
         onCategoryChange={handleCategoryChange}

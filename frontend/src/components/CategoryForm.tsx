@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
-import type { Category } from '../api/client';
+import { useState } from 'react';
+import type { Category } from '@/api/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface Props {
   category?: Category | null;
@@ -8,15 +11,8 @@ interface Props {
 }
 
 export default function CategoryForm({ category, onSubmit, onCancel }: Props) {
-  const [name, setName] = useState('');
-  const [colour, setColour] = useState('#3B82F6');
-
-  useEffect(() => {
-    if (category) {
-      setName(category.name);
-      setColour(category.colour);
-    }
-  }, [category]);
+  const [name, setName] = useState(category?.name ?? '');
+  const [colour, setColour] = useState(category?.colour ?? '#3B82F6');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,36 +20,35 @@ export default function CategoryForm({ category, onSubmit, onCancel }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white p-4 rounded shadow mb-4 space-y-3">
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Name</label>
-        <input
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="space-y-1">
+        <Label>Name</Label>
+        <Input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
-          className="mt-1 block w-full rounded border-gray-300 border px-3 py-2 text-sm"
         />
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Colour</label>
-        <div className="flex items-center gap-2 mt-1">
+      <div className="space-y-1">
+        <Label>Colour</Label>
+        <div className="flex items-center gap-2">
           <input
             type="color"
             value={colour}
             onChange={(e) => setColour(e.target.value)}
-            className="h-10 w-14 rounded border border-gray-300 cursor-pointer"
+            className="h-10 w-14 rounded border border-input cursor-pointer"
           />
-          <span className="text-sm text-gray-500">{colour}</span>
+          <span className="text-sm text-muted-foreground">{colour}</span>
         </div>
       </div>
       <div className="flex gap-2">
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">
+        <Button type="submit">
           {category ? 'Update' : 'Create'}
-        </button>
-        <button type="button" onClick={onCancel} className="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-300">
+        </Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

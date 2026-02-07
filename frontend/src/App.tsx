@@ -1,9 +1,9 @@
 import { Routes, Route } from 'react-router-dom';
-import Layout from './components/Layout';
-import Transactions from './pages/Transactions';
-import Accounts from './pages/Accounts';
-import Categories from './pages/Categories';
-import Reports from './pages/Reports';
+import Layout from '@/components/Layout';
+import Transactions from '@/pages/Transactions';
+import Accounts from '@/pages/Accounts';
+import Categories from '@/pages/Categories';
+import Reports from '@/pages/Reports';
 
 export default function App() {
   return (

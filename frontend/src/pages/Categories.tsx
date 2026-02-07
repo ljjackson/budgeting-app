@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
-import type { Category } from '../api/client';
-import { getCategories, createCategory, updateCategory, deleteCategory } from '../api/client';
-import CategoryForm from '../components/CategoryForm';
+import type { Category } from '@/api/client';
+import { getCategories, createCategory, updateCategory, deleteCategory } from '@/api/client';
+import CategoryForm from '@/components/CategoryForm';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
 
 export default function Categories() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -31,51 +36,62 @@ export default function Categories() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-gray-800">Categories</h1>
-        <button
-          onClick={() => { setEditing(null); setShowForm(true); }}
-          className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
-        >
+        <h1 className="text-2xl font-bold">Categories</h1>
+        <Button onClick={() => { setEditing(null); setShowForm(true); }}>
           Add Category
-        </button>
+        </Button>
       </div>
 
-      {showForm && (
-        <CategoryForm
-          category={editing}
-          onSubmit={handleSubmit}
-          onCancel={() => { setShowForm(false); setEditing(null); }}
-        />
-      )}
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) { setShowForm(false); setEditing(null); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Edit Category' : 'New Category'}</DialogTitle>
+            <DialogDescription>
+              {editing ? 'Update the category details below.' : 'Fill in the details to create a new category.'}
+            </DialogDescription>
+          </DialogHeader>
+          <CategoryForm
+            key={editing?.id ?? 'new'}
+            category={editing}
+            onSubmit={handleSubmit}
+            onCancel={() => { setShowForm(false); setEditing(null); }}
+          />
+        </DialogContent>
+      </Dialog>
 
       <div className="grid gap-3">
         {categories.map((cat) => (
-          <div key={cat.id} className="bg-white p-4 rounded shadow flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded" style={{ backgroundColor: cat.colour }} />
-              <div>
-                <div className="font-medium text-gray-800">{cat.name}</div>
-                <div className="text-sm text-gray-500">{cat.colour}</div>
+          <Card key={cat.id} className="py-3">
+            <CardContent className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded" style={{ backgroundColor: cat.colour }} />
+                <div>
+                  <div className="font-medium">{cat.name}</div>
+                  <div className="text-sm text-muted-foreground">{cat.colour}</div>
+                </div>
               </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setEditing(cat); setShowForm(true); }}
-                className="text-blue-600 hover:text-blue-800 text-sm"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => handleDelete(cat.id)}
-                className="text-red-600 hover:text-red-800 text-sm"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setEditing(cat); setShowForm(true); }}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive"
+                  onClick={() => handleDelete(cat.id)}
+                >
+                  Delete
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         ))}
         {categories.length === 0 && (
-          <p className="text-gray-400 text-center py-8">No categories yet. Create one to get started.</p>
+          <p className="text-muted-foreground text-center py-8">No categories yet. Create one to get started.</p>
         )}
       </div>
     </div>
