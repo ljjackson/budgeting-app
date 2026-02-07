@@ -50,7 +50,7 @@ export default function Accounts() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-6 pb-4 border-b">
         <h1 className="text-2xl font-bold">Accounts</h1>
         <Button onClick={() => { setEditing(null); setShowForm(true); }}>
           Add Account
@@ -74,25 +74,22 @@ export default function Accounts() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {accounts.map((account) => (
-          <Card key={account.id} className="py-3">
-            <CardContent className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div>
-                  <div className="font-medium">{account.name}</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="secondary">{account.type}</Badge>
-                    {account.has_transactions && (
-                      <span className="text-xs text-muted-foreground">Has transactions</span>
-                    )}
-                  </div>
-                </div>
+          <Card key={account.id} className="py-3 gap-0">
+            <CardContent className="px-4">
+              <div className="flex justify-between items-start mb-2">
+                <div className="font-medium">{account.name}</div>
+                <Badge variant="secondary" className="text-xs">{account.type}</Badge>
               </div>
-              <div className="flex gap-2">
+              {account.has_transactions && (
+                <p className="text-xs text-muted-foreground mb-3">Has transactions</p>
+              )}
+              <div className="flex gap-1 pt-2 border-t">
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="h-7 px-2 text-xs"
                   onClick={() => { setEditing(account); setShowForm(true); }}
                 >
                   Edit
@@ -100,7 +97,7 @@ export default function Accounts() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-destructive"
+                  className="h-7 px-2 text-xs text-destructive"
                   disabled={account.has_transactions}
                   title={account.has_transactions ? 'Delete transactions first' : undefined}
                   onClick={() => handleDelete(account.id)}
@@ -112,7 +109,7 @@ export default function Accounts() {
           </Card>
         ))}
         {accounts.length === 0 && (
-          <p className="text-muted-foreground text-center py-8">No accounts yet. Create one to get started.</p>
+          <p className="text-muted-foreground text-center py-8 col-span-full">No accounts yet. Create one to get started.</p>
         )}
       </div>
     </div>

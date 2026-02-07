@@ -144,24 +144,26 @@ export default function Transactions() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex items-center justify-between mb-6 pb-4 border-b">
         <h1 className="text-2xl font-bold">Transactions</h1>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setShowImport(true)}>
-            Import CSV
-          </Button>
-          <Button onClick={() => { setEditing(null); setShowForm(true); }}>
-            Add Transaction
-          </Button>
+        <div className="flex items-center gap-4">
+          <MonthNavigator
+            currentMonth={currentMonth}
+            currentYear={currentYear}
+            onPrev={prevMonth}
+            onNext={nextMonth}
+            className="mb-0"
+          />
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setShowImport(true)}>
+              Import CSV
+            </Button>
+            <Button onClick={() => { setEditing(null); setShowForm(true); }}>
+              Add Transaction
+            </Button>
+          </div>
         </div>
       </div>
-
-      <MonthNavigator
-        currentMonth={currentMonth}
-        currentYear={currentYear}
-        onPrev={prevMonth}
-        onNext={nextMonth}
-      />
 
       <Dialog open={showImport} onOpenChange={setShowImport}>
         <DialogContent>
@@ -193,8 +195,8 @@ export default function Transactions() {
       </Dialog>
 
       {/* Filters */}
-      <Card className="mb-4 py-3">
-        <CardContent className="flex flex-wrap gap-3 items-end">
+      <Card className="mb-4 py-3 gap-0">
+        <CardContent className="px-4 flex flex-wrap gap-3 items-end">
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Account</Label>
             <Select
@@ -264,8 +266,8 @@ export default function Transactions() {
 
       {/* Bulk category bar */}
       {selectedCount > 0 && (
-        <Card className="mb-4 py-2">
-          <CardContent className="flex items-center gap-3">
+        <Card className="mb-4 py-2 gap-0">
+          <CardContent className="px-4 flex items-center gap-3">
             <span className="text-sm font-medium">{selectedCount} selected</span>
             <Select value={bulkCategoryId} onValueChange={setBulkCategoryId}>
               <SelectTrigger size="sm" className="w-44">
@@ -288,19 +290,21 @@ export default function Transactions() {
         </Card>
       )}
 
-      <TransactionTable
-        transactions={transactions}
-        categories={categories}
-        loading={isLoading}
-        loadingMore={isFetchingNextPage}
-        hasMore={!!hasNextPage}
-        onLoadMore={() => fetchNextPage()}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onCategoryChange={handleCategoryChange}
-        selection={selection}
-        onSelectionChange={setSelection}
-      />
+      <Card className="p-0 gap-0 overflow-hidden rounded-lg">
+        <TransactionTable
+          transactions={transactions}
+          categories={categories}
+          loading={isLoading}
+          loadingMore={isFetchingNextPage}
+          hasMore={!!hasNextPage}
+          onLoadMore={() => fetchNextPage()}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onCategoryChange={handleCategoryChange}
+          selection={selection}
+          onSelectionChange={setSelection}
+        />
+      </Card>
     </div>
   );
 }

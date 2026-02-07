@@ -1,12 +1,13 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { Wallet, ArrowLeftRight, Landmark, Tag, BarChart3 } from 'lucide-react';
 
 const navItems = [
-  { to: '/', label: 'Budget' },
-  { to: '/transactions', label: 'Transactions' },
-  { to: '/accounts', label: 'Accounts' },
-  { to: '/categories', label: 'Categories' },
-  { to: '/reports', label: 'Reports' },
+  { to: '/', label: 'Budget', icon: Wallet },
+  { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
+  { to: '/accounts', label: 'Accounts', icon: Landmark },
+  { to: '/categories', label: 'Categories', icon: Tag },
+  { to: '/reports', label: 'Reports', icon: BarChart3 },
 ];
 
 export default function Layout() {
@@ -22,13 +23,14 @@ export default function Layout() {
               end={item.to === '/'}
               className={({ isActive }) =>
                 cn(
-                  'block px-4 py-2 rounded-md mb-1 text-sm',
+                  'flex items-center gap-3 px-4 py-2 rounded-md mb-1 text-sm',
                   isActive
                     ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
                     : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50'
                 )
               }
             >
+              <item.icon className="h-4 w-4" />
               {item.label}
             </NavLink>
           ))}

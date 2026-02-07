@@ -37,19 +37,21 @@ export default function Reports() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Reports</h1>
+      <div className="flex items-center justify-between mb-6 pb-4 border-b">
+        <h1 className="text-2xl font-bold">Reports</h1>
+        {!customRange && (
+          <MonthNavigator
+            currentMonth={currentMonth}
+            currentYear={currentYear}
+            onPrev={prevMonth}
+            onNext={nextMonth}
+            className="mb-0"
+          />
+        )}
+      </div>
 
-      {!customRange && (
-        <MonthNavigator
-          currentMonth={currentMonth}
-          currentYear={currentYear}
-          onPrev={prevMonth}
-          onNext={nextMonth}
-        />
-      )}
-
-      <Card className="mb-4 py-3">
-        <CardContent className="flex flex-wrap gap-3 items-end">
+      <Card className="mb-4 py-3 gap-0">
+        <CardContent className="px-4 flex flex-wrap gap-3 items-end">
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Type</Label>
             <Select

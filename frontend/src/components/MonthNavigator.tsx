@@ -1,6 +1,7 @@
 import { MONTH_NAMES } from '@/constants';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface MonthNavigatorProps {
   currentMonth: number;
@@ -8,11 +9,12 @@ interface MonthNavigatorProps {
   onPrev: () => void;
   onNext: () => void;
   canGoNext?: boolean;
+  className?: string;
 }
 
-export default function MonthNavigator({ currentMonth, currentYear, onPrev, onNext, canGoNext = true }: MonthNavigatorProps) {
+export default function MonthNavigator({ currentMonth, currentYear, onPrev, onNext, canGoNext = true, className }: MonthNavigatorProps) {
   return (
-    <div className="flex items-center justify-center gap-2 mb-4">
+    <div className={cn("flex items-center justify-center gap-2 mb-4", className)}>
       <Button variant="outline" size="icon-sm" onClick={onPrev}>
         <ChevronLeft className="h-4 w-4" />
       </Button>

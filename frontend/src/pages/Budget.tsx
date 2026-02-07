@@ -66,45 +66,55 @@ export default function Budget() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Budget</h1>
+      <div className="flex items-center justify-between mb-6 pb-4 border-b">
+        <h1 className="text-2xl font-bold">Budget</h1>
+        <MonthNavigator
+          currentMonth={currentMonth}
+          currentYear={currentYear}
+          onPrev={prevMonth}
+          onNext={nextMonth}
+          canGoNext={canGoNext}
+          className="mb-0"
+        />
+      </div>
 
-      <MonthNavigator
-        currentMonth={currentMonth}
-        currentYear={currentYear}
-        onPrev={prevMonth}
-        onNext={nextMonth}
-        canGoNext={canGoNext}
-      />
-
-      {/* Summary card */}
-      <Card className="mb-4">
-        <CardContent className="py-4">
-          {isLoading ? (
-            <div className="flex flex-wrap gap-6">
-              <Skeleton className="h-5 w-36" />
-              <Skeleton className="h-5 w-36" />
-              <Skeleton className="h-5 w-44" />
-            </div>
-          ) : budget ? (
-            <div className="flex flex-wrap gap-6 text-sm">
-              <span>Income: <span className="font-medium">{formatCurrency(budget.income)}</span></span>
-              <span>Assigned: <span className="font-medium">{formatCurrency(budget.total_assigned)}</span></span>
-              <span>
-                Ready to Assign:{' '}
-                <span className={cn(
-                  'font-medium',
-                  budget.ready_to_assign >= 0 ? 'text-green-600' : 'text-red-600'
-                )}>
-                  {formatCurrency(budget.ready_to_assign)}
-                </span>
-              </span>
+      {/* Summary cards */}
+      {isLoading ? (
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i}><CardContent className="py-4"><Skeleton className="h-8 w-24" /></CardContent></Card>
+          ))}
+        </div>
+      ) : budget ? (
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <Card>
+            <CardContent className="py-4">
+              <div className="text-xs text-muted-foreground mb-1">Income</div>
+              <div className="text-xl font-semibold">{formatCurrency(budget.income)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="py-4">
+              <div className="text-xs text-muted-foreground mb-1">Assigned</div>
+              <div className="text-xl font-semibold">{formatCurrency(budget.total_assigned)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="py-4">
+              <div className="text-xs text-muted-foreground mb-1">Ready to Assign</div>
+              <div className={cn(
+                'text-xl font-semibold',
+                budget.ready_to_assign >= 0 ? 'text-green-600' : 'text-red-600'
+              )}>
+                {formatCurrency(budget.ready_to_assign)}
+              </div>
               {budget.total_underfunded > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="link"
                       className={cn(
-                        'p-0 h-auto text-sm',
+                        'p-0 h-auto text-xs mt-1',
                         canFundAll
                           ? 'text-yellow-600 underline decoration-dotted hover:decoration-solid cursor-pointer'
                           : 'text-yellow-600/60 no-underline cursor-not-allowed'
@@ -112,10 +122,7 @@ export default function Budget() {
                       disabled={!canFundAll || fundingAll}
                       onClick={fundAllUnderfunded}
                     >
-                      Underfunded:{' '}
-                      <span className="font-medium">
-                        {fundingAll ? 'Assigning...' : formatCurrency(budget.total_underfunded)}
-                      </span>
+                      {fundingAll ? 'Assigning...' : `${formatCurrency(budget.total_underfunded)} underfunded`}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -125,10 +132,10 @@ export default function Budget() {
                   </TooltipContent>
                 </Tooltip>
               )}
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
       {/* Uncategorized expenses warning */}
       {!isLoading && budget && budget.uncategorized_expenses > 0 && (
@@ -146,6 +153,8 @@ export default function Budget() {
       )}
 
       {/* Budget table */}
+      <Card className="py-0 gap-0 overflow-hidden">
+        <CardContent className="p-0">
       <Table>
             <TableHeader>
               <TableRow>
@@ -278,6 +287,8 @@ export default function Budget() {
               ))}
             </TableBody>
       </Table>
+        </CardContent>
+      </Card>
 
       {selectedCategory && (
         <CategoryDetailPanel

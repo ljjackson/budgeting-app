@@ -18,3 +18,11 @@ node_modules/
 .vscode/
 .idea/
 *.sw?
+
+# Claude Code
+.claude/settings.json
+.claude/settings.local.json
+
+# Screenshots
+*.png
+*.jpeg

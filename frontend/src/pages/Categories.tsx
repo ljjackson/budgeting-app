@@ -43,7 +43,7 @@ export default function Categories() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-6 pb-4 border-b">
         <h1 className="text-2xl font-bold">Categories</h1>
         <Button onClick={() => { setEditing(null); setShowForm(true); }}>
           Add Category
@@ -67,21 +67,19 @@ export default function Categories() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {categories.map((cat) => (
-          <Card key={cat.id} className="py-3">
-            <CardContent className="flex justify-between items-center">
+          <Card key={cat.id} className="py-2 gap-0">
+            <CardContent className="px-3 flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded" style={{ backgroundColor: cat.colour }} />
-                <div>
-                  <div className="font-medium">{cat.name}</div>
-                  <div className="text-sm text-muted-foreground">{cat.colour}</div>
-                </div>
+                <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: cat.colour }} />
+                <span className="font-medium text-sm">{cat.name}</span>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1">
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="h-7 px-2 text-xs"
                   onClick={() => { setEditing(cat); setShowForm(true); }}
                 >
                   Edit
@@ -89,7 +87,7 @@ export default function Categories() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-destructive"
+                  className="h-7 px-2 text-xs text-destructive"
                   onClick={() => handleDelete(cat.id)}
                 >
                   Delete
@@ -99,7 +97,7 @@ export default function Categories() {
           </Card>
         ))}
         {categories.length === 0 && (
-          <p className="text-muted-foreground text-center py-8">No categories yet. Create one to get started.</p>
+          <p className="text-muted-foreground text-center py-8 col-span-full">No categories yet. Create one to get started.</p>
         )}
       </div>
     </div>
