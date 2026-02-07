@@ -17,6 +17,11 @@ func NewBudgetService(db *gorm.DB) *BudgetService {
 	return &BudgetService{db: db}
 }
 
+type BulkAllocationItem struct {
+	CategoryID uint  `json:"category_id"`
+	Amount     int64 `json:"amount"`
+}
+
 type BudgetCategoryRow struct {
 	CategoryID   uint    `json:"category_id"`
 	CategoryName string  `json:"category_name"`
@@ -49,14 +54,18 @@ func (s *BudgetService) GetBudget(month string) (*BudgetResponse, error) {
 		CumulativeIncome int64
 	}
 	var income incomeResult
-	s.db.Raw(`SELECT
+	if err := s.db.Raw(`SELECT
 		COALESCE(SUM(CASE WHEN date >= ? AND date <= ? THEN amount ELSE 0 END), 0) as month_income,
 		COALESCE(SUM(amount), 0) as cumulative_income
-		FROM transactions WHERE type='income' AND date <= ?`, firstDay, lastDay, lastDay).Scan(&income)
+		FROM transactions WHERE type='income' AND date <= ?`, firstDay, lastDay, lastDay).Scan(&income).Error; err != nil {
+		return nil, err
+	}
 
 	// 2. All categories
 	var categories []models.Category
-	s.db.Order("name").Find(&categories)
+	if err := s.db.Order("name").Find(&categories).Error; err != nil {
+		return nil, err
+	}
 
 	// 3. Allocations: monthly + cumulative per category in one query
 	type allocRow struct {
@@ -65,10 +74,12 @@ func (s *BudgetService) GetBudget(month string) (*BudgetResponse, error) {
 		CumAmount     int64
 	}
 	var allocRows []allocRow
-	s.db.Raw(`SELECT category_id,
+	if err := s.db.Raw(`SELECT category_id,
 		COALESCE(SUM(CASE WHEN month = ? THEN amount ELSE 0 END), 0) as month_amount,
 		COALESCE(SUM(amount), 0) as cum_amount
-		FROM budget_allocations WHERE month <= ? GROUP BY category_id`, month, month).Scan(&allocRows)
+		FROM budget_allocations WHERE month <= ? GROUP BY category_id`, month, month).Scan(&allocRows).Error; err != nil {
+		return nil, err
+	}
 	monthAllocMap := make(map[uint]int64)
 	cumAllocMap := make(map[uint]int64)
 	for _, a := range allocRows {
@@ -83,11 +94,13 @@ func (s *BudgetService) GetBudget(month string) (*BudgetResponse, error) {
 		CumAmount   int64
 	}
 	var expenseRows []expenseRow
-	s.db.Raw(`SELECT category_id,
+	if err := s.db.Raw(`SELECT category_id,
 		COALESCE(SUM(CASE WHEN date >= ? AND date <= ? THEN amount ELSE 0 END), 0) as month_amount,
 		COALESCE(SUM(amount), 0) as cum_amount
 		FROM transactions WHERE type='expense' AND date <= ? AND category_id IS NOT NULL
-		GROUP BY category_id`, firstDay, lastDay, lastDay).Scan(&expenseRows)
+		GROUP BY category_id`, firstDay, lastDay, lastDay).Scan(&expenseRows).Error; err != nil {
+		return nil, err
+	}
 	monthExpenseMap := make(map[uint]int64)
 	cumExpenseMap := make(map[uint]int64)
 	for _, e := range expenseRows {
@@ -97,11 +110,15 @@ func (s *BudgetService) GetBudget(month string) (*BudgetResponse, error) {
 
 	// 5. Uncategorized expense count
 	var uncategorizedExpenses int64
-	s.db.Raw("SELECT COUNT(*) FROM transactions WHERE type='expense' AND category_id IS NULL AND date >= ? AND date <= ?", firstDay, lastDay).Scan(&uncategorizedExpenses)
+	if err := s.db.Raw("SELECT COUNT(*) FROM transactions WHERE type='expense' AND category_id IS NULL AND date >= ? AND date <= ?", firstDay, lastDay).Scan(&uncategorizedExpenses).Error; err != nil {
+		return nil, err
+	}
 
 	// 6. Load category targets active for this month
 	var targets []models.CategoryTarget
-	s.db.Where("effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)", month, month).Find(&targets)
+	if err := s.db.Where("effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)", month, month).Find(&targets).Error; err != nil {
+		return nil, err
+	}
 	targetMap := make(map[uint]models.CategoryTarget)
 	for _, t := range targets {
 		targetMap[t.CategoryID] = t
@@ -172,6 +189,29 @@ func (s *BudgetService) AllocateBudget(month string, categoryID uint, amount int
 		Columns:   []clause.Column{{Name: "month"}, {Name: "category_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"amount", "updated_at"}),
 	}).Create(&alloc).Error
+}
+
+func (s *BudgetService) AllocateBulk(month string, allocations []BulkAllocationItem) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		for _, a := range allocations {
+			var cat models.Category
+			if err := tx.First(&cat, a.CategoryID).Error; err != nil {
+				return err
+			}
+			alloc := models.BudgetAllocation{
+				Month:      month,
+				CategoryID: a.CategoryID,
+				Amount:     a.Amount,
+			}
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "month"}, {Name: "category_id"}},
+				DoUpdates: clause.AssignmentColumns([]string{"amount", "updated_at"}),
+			}).Create(&alloc).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (s *BudgetService) GetCategoryAverage(categoryID uint, month string) (int64, error) {

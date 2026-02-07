@@ -46,6 +46,19 @@ export default function CategoryDetailPanel({
   const [editingAssigned, setEditingAssigned] = useState(false);
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  useEffect(() => {
+    panelRef.current?.focus();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCloseRef.current();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Target form state
   const [editingTarget, setEditingTarget] = useState(false);
@@ -139,6 +152,8 @@ export default function CategoryDetailPanel({
 
   return createPortal(
     <div
+      ref={panelRef}
+      tabIndex={-1}
       className="w-[380px] shrink-0 border-l bg-background overflow-y-auto"
       style={{ animation: 'slide-in-right 0.25s ease-out' }}
     >
@@ -228,7 +243,7 @@ export default function CategoryDetailPanel({
           {editingTarget ? (
             <div className="space-y-3 rounded-md border p-3">
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Type</label>
+                <label htmlFor="target-type" className="text-xs text-muted-foreground">Type</label>
                 <Select value={targetType} onValueChange={(v) => setTargetType(v as TargetType)}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -241,8 +256,9 @@ export default function CategoryDetailPanel({
                 </Select>
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Amount</label>
+                <label htmlFor="target-amount" className="text-xs text-muted-foreground">Amount</label>
                 <Input
+                  id="target-amount"
                   type="text"
                   value={targetAmount}
                   onChange={(e) => setTargetAmount(e.target.value)}
@@ -252,8 +268,9 @@ export default function CategoryDetailPanel({
               </div>
               {needsDate && (
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Target month</label>
+                  <label htmlFor="target-date" className="text-xs text-muted-foreground">Target month</label>
                   <Input
+                    id="target-date"
                     type="month"
                     value={targetDate}
                     onChange={(e) => setTargetDate(e.target.value)}

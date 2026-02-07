@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { SENTINEL_ALL } from '@/constants';
 
 export default function Reports() {
   const { currentYear, currentMonth, dateRange, prevMonth, nextMonth } = useMonthNavigator();
@@ -55,8 +56,8 @@ export default function Reports() {
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Type</Label>
             <Select
-              value={txnType || '__all__'}
-              onValueChange={(v) => setTxnType(v === '__all__' ? '' : v)}
+              value={txnType || SENTINEL_ALL}
+              onValueChange={(v) => setTxnType(v === SENTINEL_ALL ? '' : v)}
             >
               <SelectTrigger size="sm">
                 <SelectValue />
@@ -64,7 +65,7 @@ export default function Reports() {
               <SelectContent>
                 <SelectItem value="expense">Expenses</SelectItem>
                 <SelectItem value="income">Income</SelectItem>
-                <SelectItem value="__all__">All</SelectItem>
+                <SelectItem value={SENTINEL_ALL}>All</SelectItem>
               </SelectContent>
             </Select>
           </div>

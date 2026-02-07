@@ -51,6 +51,10 @@ func (h *TransactionHandler) Create(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, "Invalid date format. Must be YYYY-MM-DD")
 		return
 	}
+	if input.Amount <= 0 {
+		respondError(c, http.StatusBadRequest, "Amount must be greater than 0")
+		return
+	}
 
 	txn := services.CreateTransactionFromInput(input.AccountID, input.CategoryID, input.Amount, input.Description, input.Date, input.Type)
 	if err := h.service.Create(&txn); err != nil {
@@ -119,6 +123,10 @@ func (h *TransactionHandler) BulkUpdateCategory(c *gin.Context) {
 	}
 	if len(input.TransactionIDs) == 0 {
 		respondError(c, http.StatusBadRequest, "transaction_ids must not be empty")
+		return
+	}
+	if len(input.TransactionIDs) > 500 {
+		respondError(c, http.StatusBadRequest, "Cannot bulk update more than 500 transactions at once")
 		return
 	}
 

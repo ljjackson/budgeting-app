@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useBudget, useAllocateBudget } from '@/hooks/useBudget';
+import { useBudget, useAllocateBudget, useAllocateBulk } from '@/hooks/useBudget';
 import { useMonthNavigator } from '@/hooks/useMonthNavigator';
 import { useInlineEdit } from '@/hooks/useInlineEdit';
 import { formatCurrency, centsToDecimal, resolveAssignedInput } from '@/utils/currency';
@@ -29,19 +29,22 @@ export default function Budget() {
   const [fundingAll, setFundingAll] = useState(false);
   const canFundAll = budget != null && budget.total_underfunded > 0 && budget.ready_to_assign >= budget.total_underfunded;
 
+  const bulkAllocateMutation = useAllocateBulk();
+
   const fundAllUnderfunded = async () => {
     if (!budget || fundingAll) return;
     setFundingAll(true);
     try {
-      for (const row of budget.categories) {
-        if (row.underfunded != null && row.underfunded > 0) {
-          await allocateMutation.mutateAsync({
-            month: monthStr,
-            category_id: row.category_id,
-            amount: row.assigned + row.underfunded,
-          });
-        }
-      }
+      const allocations = budget.categories
+        .filter(row => row.underfunded != null && row.underfunded > 0)
+        .map(row => ({
+          category_id: row.category_id,
+          amount: row.assigned + row.underfunded!,
+        }));
+      await bulkAllocateMutation.mutateAsync({
+        month: monthStr,
+        allocations,
+      });
     } finally {
       setFundingAll(false);
     }

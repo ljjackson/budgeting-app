@@ -40,5 +40,18 @@ func (s *CategoryService) Delete(id uint) error {
 	if err := s.db.First(&category, id).Error; err != nil {
 		return err
 	}
+	var count int64
+	s.db.Model(&models.Transaction{}).Where("category_id = ?", id).Count(&count)
+	if count > 0 {
+		return ErrCategoryHasTransactions
+	}
+	s.db.Model(&models.BudgetAllocation{}).Where("category_id = ?", id).Count(&count)
+	if count > 0 {
+		return ErrCategoryHasTransactions
+	}
+	s.db.Model(&models.CategoryTarget{}).Where("category_id = ?", id).Count(&count)
+	if count > 0 {
+		return ErrCategoryHasTransactions
+	}
 	return s.db.Delete(&category).Error
 }

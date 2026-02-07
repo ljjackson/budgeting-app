@@ -50,7 +50,7 @@ const TransactionRow = memo(function TransactionRow({ txn, categories, selected,
       <TableCell>{formatDate(txn.date)}</TableCell>
       <TableCell className="truncate">{txn.description}</TableCell>
       <TableCell className={`font-medium tabular-nums ${txn.type === 'income' ? 'text-positive' : 'text-negative'}`}>
-        {formatCurrency(txn.amount)}
+        {txn.type === 'income' ? '+' : '-'}{formatCurrency(txn.amount)}
       </TableCell>
       <TableCell>{txn.account?.name ?? '-'}</TableCell>
       <TableCell>

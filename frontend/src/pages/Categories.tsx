@@ -4,12 +4,13 @@ import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory 
 import CategoryForm from '@/components/CategoryForm';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 
 export default function Categories() {
-  const { data: categories = [], isError, error } = useCategories();
+  const { data: categories = [], isLoading, isError, error } = useCategories();
   const createMutation = useCreateCategory();
   const updateMutation = useUpdateCategory();
   const deleteMutation = useDeleteCategory();
@@ -67,43 +68,56 @@ export default function Categories() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {categories.map((cat) => (
-          <Card
-            key={cat.id}
-            className="py-2 gap-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/5 border-l-[3px]"
-            style={{ borderLeftColor: cat.colour }}
-          >
-            <CardContent className="px-3 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: cat.colour }} />
-                <span className="font-medium text-sm">{cat.name}</span>
-              </div>
-              <div className="flex gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => { setEditing(cat); setShowForm(true); }}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs text-destructive"
-                  onClick={() => handleDelete(cat.id)}
-                >
-                  Delete
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        {categories.length === 0 && (
-          <p className="text-muted-foreground text-center py-8 col-span-full">No categories yet. Create one to get started.</p>
-        )}
-      </div>
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="py-2 gap-0">
+              <CardContent className="px-3">
+                <Skeleton className="h-5 w-32 mb-2" />
+                <Skeleton className="h-4 w-20" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {categories.map((cat) => (
+            <Card
+              key={cat.id}
+              className="py-2 gap-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/5 border-l-[3px]"
+              style={{ borderLeftColor: cat.colour }}
+            >
+              <CardContent className="px-3 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: cat.colour }} />
+                  <span className="font-medium text-sm">{cat.name}</span>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => { setEditing(cat); setShowForm(true); }}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-destructive"
+                    onClick={() => handleDelete(cat.id)}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {categories.length === 0 && (
+            <p className="text-muted-foreground text-center py-8 col-span-full">No categories yet. Create one to get started.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

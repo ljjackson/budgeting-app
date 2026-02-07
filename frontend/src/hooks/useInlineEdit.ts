@@ -6,6 +6,8 @@ export function useInlineEdit<T extends string | number>(options: {
   const [editingId, setEditingId] = useState<T | null>(null);
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const onCommitRef = useRef(options.onCommit);
+  useEffect(() => { onCommitRef.current = options.onCommit; }, [options.onCommit]);
 
   useEffect(() => {
     if (editingId !== null) {
@@ -21,9 +23,9 @@ export function useInlineEdit<T extends string | number>(options: {
 
   const commitEdit = useCallback(() => {
     if (editingId === null) return;
-    options.onCommit(editingId, editValue);
+    onCommitRef.current(editingId, editValue);
     setEditingId(null);
-  }, [editingId, editValue, options]);
+  }, [editingId, editValue]);
 
   const cancelEdit = useCallback(() => {
     setEditingId(null);

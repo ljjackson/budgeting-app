@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Account, AccountType, CreateAccountRequest } from '@/api/client';
 import { parseCurrency } from '@/utils/currency';
+import { ACCOUNT_TYPES } from '@/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,8 +14,6 @@ interface Props {
   onSubmit: (data: CreateAccountRequest) => void;
   onCancel: () => void;
 }
-
-const ACCOUNT_TYPES = ['checking', 'savings', 'credit', 'cash'];
 
 export default function AccountForm({ account, onSubmit, onCancel }: Props) {
   const [name, setName] = useState(account?.name ?? '');
@@ -33,8 +32,9 @@ export default function AccountForm({ account, onSubmit, onCancel }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="space-y-1">
-        <Label>Name</Label>
+        <Label htmlFor="acct-name">Name</Label>
         <Input
+          id="acct-name"
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -42,7 +42,7 @@ export default function AccountForm({ account, onSubmit, onCancel }: Props) {
         />
       </div>
       <div className="space-y-1">
-        <Label>Type</Label>
+        <Label htmlFor="acct-type">Type</Label>
         <Select value={type} onValueChange={(v) => setType(v as AccountType)}>
           <SelectTrigger className="w-full">
             <SelectValue />
@@ -56,8 +56,9 @@ export default function AccountForm({ account, onSubmit, onCancel }: Props) {
       </div>
       {!account && (
         <div className="space-y-1">
-          <Label>Starting Balance (&pound;)</Label>
+          <Label htmlFor="acct-balance">Starting Balance (&pound;)</Label>
           <Input
+            id="acct-balance"
             type="number"
             step="0.01"
             value={startingBalance}

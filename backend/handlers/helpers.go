@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -22,6 +22,6 @@ func respondError(c *gin.Context, status int, msg string) {
 }
 
 func respondServerError(c *gin.Context, err error, publicMsg string) {
-	log.Printf("ERROR: %s: %v", publicMsg, err)
+	slog.Error(publicMsg, "error", err)
 	c.JSON(http.StatusInternalServerError, gin.H{"error": publicMsg})
 }

@@ -205,6 +205,14 @@ export const getBudget = (month: string) =>
 export const allocateBudget = (data: AllocateBudgetRequest) =>
   request<BudgetResponse>('/budget/allocate', { method: 'PUT', body: JSON.stringify(data) });
 
+export interface BulkAllocateRequest {
+  month: string;
+  allocations: { category_id: number; amount: number }[];
+}
+
+export const allocateBulk = (data: BulkAllocateRequest) =>
+  request<BudgetResponse>('/budget/allocate-bulk', { method: 'PUT', body: JSON.stringify(data) });
+
 export interface CategoryAverageResponse {
   average: number; // cents
 }

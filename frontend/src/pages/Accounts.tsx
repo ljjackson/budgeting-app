@@ -5,12 +5,13 @@ import AccountForm from '@/components/AccountForm';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 
 export default function Accounts() {
-  const { data: accounts = [], isError, error } = useAccounts();
+  const { data: accounts = [], isLoading, isError, error } = useAccounts();
   const createMutation = useCreateAccount();
   const updateMutation = useUpdateAccount();
   const deleteMutation = useDeleteAccount();
@@ -74,44 +75,57 @@ export default function Accounts() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {accounts.map((account) => (
-          <Card key={account.id} className="py-3 gap-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/5 border-l-[3px] border-l-primary">
-            <CardContent className="px-4">
-              <div className="flex justify-between items-start mb-2">
-                <div className="font-medium">{account.name}</div>
-                <Badge variant="secondary" className="text-xs">{account.type}</Badge>
-              </div>
-              {account.has_transactions && (
-                <p className="text-xs text-muted-foreground mb-3">Has transactions</p>
-              )}
-              <div className="flex gap-1 pt-2 border-t">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => { setEditing(account); setShowForm(true); }}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs text-destructive"
-                  disabled={account.has_transactions}
-                  title={account.has_transactions ? 'Delete transactions first' : undefined}
-                  onClick={() => handleDelete(account.id)}
-                >
-                  Delete
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        {accounts.length === 0 && (
-          <p className="text-muted-foreground text-center py-8 col-span-full">No accounts yet. Create one to get started.</p>
-        )}
-      </div>
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="py-3 gap-0">
+              <CardContent className="px-4">
+                <Skeleton className="h-5 w-32 mb-2" />
+                <Skeleton className="h-4 w-20" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {accounts.map((account) => (
+            <Card key={account.id} className="py-3 gap-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/5 border-l-[3px] border-l-primary">
+              <CardContent className="px-4">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="font-medium">{account.name}</div>
+                  <Badge variant="secondary" className="text-xs">{account.type}</Badge>
+                </div>
+                {account.has_transactions && (
+                  <p className="text-xs text-muted-foreground mb-3">Has transactions</p>
+                )}
+                <div className="flex gap-1 pt-2 border-t">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => { setEditing(account); setShowForm(true); }}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-destructive"
+                    disabled={account.has_transactions}
+                    title={account.has_transactions ? 'Delete transactions first' : undefined}
+                    onClick={() => handleDelete(account.id)}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {accounts.length === 0 && (
+            <p className="text-muted-foreground text-center py-8 col-span-full">No accounts yet. Create one to get started.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

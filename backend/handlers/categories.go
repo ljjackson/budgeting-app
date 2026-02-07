@@ -84,6 +84,10 @@ func (h *CategoryHandler) Delete(c *gin.Context) {
 			respondError(c, http.StatusNotFound, "Category not found")
 			return
 		}
+		if errors.Is(err, services.ErrCategoryHasTransactions) {
+			respondError(c, http.StatusConflict, "Cannot delete category with associated data")
+			return
+		}
 		respondServerError(c, err, "Failed to delete category")
 		return
 	}

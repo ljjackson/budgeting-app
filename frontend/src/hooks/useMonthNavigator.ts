@@ -14,12 +14,14 @@ export function useMonthNavigator(options?: { maxMonthsAhead?: number }) {
     return { dateFrom, dateTo };
   }, [currentYear, currentMonth]);
 
+  const maxMonthsAhead = options?.maxMonthsAhead;
   const canGoNext = useMemo(() => {
-    if (options?.maxMonthsAhead == null) return true;
-    const maxDate = new Date(now.getFullYear(), now.getMonth() + options.maxMonthsAhead, 1);
+    if (maxMonthsAhead == null) return true;
+    const today = new Date();
+    const maxDate = new Date(today.getFullYear(), today.getMonth() + maxMonthsAhead, 1);
     const current = new Date(currentYear, currentMonth, 1);
     return current < maxDate;
-  }, [currentYear, currentMonth, options?.maxMonthsAhead]);
+  }, [currentYear, currentMonth, maxMonthsAhead]);
 
   const prevMonth = useCallback(() => {
     if (currentMonth === 0) {
@@ -28,7 +30,7 @@ export function useMonthNavigator(options?: { maxMonthsAhead?: number }) {
     } else {
       setCurrentMonth(m => m - 1);
     }
-  }, [currentMonth]);
+  }, [currentMonth, setCurrentMonth, setCurrentYear]);
 
   const nextMonth = useCallback(() => {
     if (!canGoNext) return;
@@ -38,7 +40,7 @@ export function useMonthNavigator(options?: { maxMonthsAhead?: number }) {
     } else {
       setCurrentMonth(m => m + 1);
     }
-  }, [currentMonth, canGoNext]);
+  }, [currentMonth, canGoNext, setCurrentMonth, setCurrentYear]);
 
   return { currentYear, currentMonth, monthStr, dateRange, prevMonth, nextMonth, canGoNext };
 }

@@ -84,7 +84,7 @@ func (h *AccountHandler) Delete(c *gin.Context) {
 			respondError(c, http.StatusNotFound, "Account not found")
 			return
 		}
-		if err.Error() == "cannot delete account with transactions" {
+		if errors.Is(err, services.ErrAccountHasTransactions) {
 			respondError(c, http.StatusConflict, "Cannot delete account with transactions")
 			return
 		}

@@ -1,4 +1,4 @@
-.PHONY: dev dev-backend dev-frontend build test
+.PHONY: dev dev-backend dev-frontend build test lint check
 
 dev-backend:
 	cd backend && go run main.go
@@ -15,3 +15,10 @@ build:
 
 test:
 	cd backend && go test ./...
+
+lint:
+	cd backend && go vet ./...
+	cd frontend && npm run lint
+
+check: lint test
+	cd frontend && npm run build

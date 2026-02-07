@@ -133,6 +133,47 @@ func (h *BudgetHandler) DeleteCategoryTarget(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "target deleted"})
 }
 
+func (h *BudgetHandler) AllocateBulk(c *gin.Context) {
+	var req struct {
+		Month       string                       `json:"month"`
+		Allocations []services.BulkAllocationItem `json:"allocations"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	if !validateMonth(req.Month) {
+		respondError(c, http.StatusBadRequest, "invalid month format (YYYY-MM)")
+		return
+	}
+	if len(req.Allocations) == 0 {
+		respondError(c, http.StatusBadRequest, "allocations must not be empty")
+		return
+	}
+	for _, a := range req.Allocations {
+		if a.CategoryID == 0 {
+			respondError(c, http.StatusBadRequest, "each allocation must have a category_id")
+			return
+		}
+		if a.Amount < 0 {
+			respondError(c, http.StatusBadRequest, "allocation amounts must be non-negative")
+			return
+		}
+	}
+
+	if err := h.service.AllocateBulk(req.Month, req.Allocations); err != nil {
+		respondServerError(c, err, "Failed to allocate budget")
+		return
+	}
+
+	resp, err := h.service.GetBudget(req.Month)
+	if err != nil {
+		respondServerError(c, err, "Failed to get budget")
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 func (h *BudgetHandler) AllocateBudget(c *gin.Context) {
 	var req struct {
 		Month      string `json:"month"`
@@ -145,6 +186,10 @@ func (h *BudgetHandler) AllocateBudget(c *gin.Context) {
 	}
 	if !validateMonth(req.Month) {
 		respondError(c, http.StatusBadRequest, "invalid month format (YYYY-MM)")
+		return
+	}
+	if req.CategoryID == 0 {
+		respondError(c, http.StatusBadRequest, "category_id is required")
 		return
 	}
 	if req.Amount < 0 {

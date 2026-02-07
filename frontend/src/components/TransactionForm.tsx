@@ -48,8 +48,9 @@ export default function TransactionForm({ transaction, accounts, categories, onS
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label>Date</Label>
+          <Label htmlFor="txn-date">Date</Label>
           <Input
+            id="txn-date"
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
@@ -57,7 +58,7 @@ export default function TransactionForm({ transaction, accounts, categories, onS
           />
         </div>
         <div className="space-y-1">
-          <Label>Type</Label>
+          <Label htmlFor="txn-type">Type</Label>
           <Select value={type} onValueChange={(v) => setType(v as TransactionType)}>
             <SelectTrigger className="w-full">
               <SelectValue />
@@ -69,8 +70,9 @@ export default function TransactionForm({ transaction, accounts, categories, onS
           </Select>
         </div>
         <div className="col-span-2 space-y-1">
-          <Label>Description</Label>
+          <Label htmlFor="txn-desc">Description</Label>
           <Input
+            id="txn-desc"
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -78,8 +80,9 @@ export default function TransactionForm({ transaction, accounts, categories, onS
           />
         </div>
         <div className="space-y-1">
-          <Label>Amount</Label>
+          <Label htmlFor="txn-amount">Amount</Label>
           <Input
+            id="txn-amount"
             type="number"
             step="0.01"
             min="0"
@@ -89,7 +92,7 @@ export default function TransactionForm({ transaction, accounts, categories, onS
           />
         </div>
         <div className="space-y-1">
-          <Label>Account</Label>
+          <Label htmlFor="txn-account">Account</Label>
           <Select
             value={accountId ? String(accountId) : undefined}
             onValueChange={(v) => setAccountId(Number(v))}
@@ -105,7 +108,7 @@ export default function TransactionForm({ transaction, accounts, categories, onS
           </Select>
         </div>
         <div className="col-span-2 space-y-1">
-          <Label>Category</Label>
+          <Label htmlFor="txn-category">Category</Label>
           <Select
             value={categoryId === '' ? '__none__' : String(categoryId)}
             onValueChange={(v) => setCategoryId(v === '__none__' ? '' : Number(v))}

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getBudget, allocateBudget, setCategoryTarget, deleteCategoryTarget } from '@/api/client';
-import type { AllocateBudgetRequest, BudgetResponse, SetCategoryTargetRequest } from '@/api/client';
+import { getBudget, allocateBudget, allocateBulk, setCategoryTarget, deleteCategoryTarget } from '@/api/client';
+import type { AllocateBudgetRequest, BulkAllocateRequest, BudgetResponse, SetCategoryTargetRequest } from '@/api/client';
 import { queryKeys } from './queryKeys';
 
 export function useBudget(month: string) {
@@ -14,6 +14,16 @@ export function useAllocateBudget() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: AllocateBudgetRequest) => allocateBudget(data),
+    onSuccess: (response: BudgetResponse) => {
+      queryClient.setQueryData(queryKeys.budget.month(response.month), response);
+    },
+  });
+}
+
+export function useAllocateBulk() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BulkAllocateRequest) => allocateBulk(data),
     onSuccess: (response: BudgetResponse) => {
       queryClient.setQueryData(queryKeys.budget.month(response.month), response);
     },

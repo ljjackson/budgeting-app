@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, useDeferredValue } from 'react';
 import type { Transaction, TransactionType } from '@/api/client';
 import type { SelectionState } from '@/components/TransactionTable';
 import { SENTINEL_NONE, SENTINEL_ALL } from '@/constants';
@@ -41,6 +41,7 @@ export default function Transactions() {
   const [filterAccount, setFilterAccount] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
 
   // Selection
   const [selection, setSelection] = useState<SelectionState>(EMPTY_SELECTION);
@@ -49,7 +50,7 @@ export default function Transactions() {
   // Clear selection when filters or month change
   useEffect(() => {
     setSelection(EMPTY_SELECTION);
-  }, [currentYear, currentMonth, filterAccount, filterCategory, search]);
+  }, [currentYear, currentMonth, filterAccount, filterCategory, deferredSearch]);
 
   const filters = useMemo(() => {
     const params: Record<string, string> = {
@@ -58,9 +59,9 @@ export default function Transactions() {
     };
     if (filterAccount) params.account_id = filterAccount;
     if (filterCategory) params.category_id = filterCategory;
-    if (search) params.search = search;
+    if (deferredSearch) params.search = deferredSearch;
     return params;
-  }, [dateRange, filterAccount, filterCategory, search]);
+  }, [dateRange, filterAccount, filterCategory, deferredSearch]);
 
   const {
     data,

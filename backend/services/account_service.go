@@ -2,7 +2,6 @@ package services
 
 import (
 	"budgetting-app/backend/models"
-	"errors"
 	"time"
 
 	"gorm.io/gorm"
@@ -103,7 +102,7 @@ func (s *AccountService) Delete(id uint) error {
 	var count int64
 	s.db.Model(&models.Transaction{}).Where("account_id = ?", account.ID).Count(&count)
 	if count > 0 {
-		return errors.New("cannot delete account with transactions")
+		return ErrAccountHasTransactions
 	}
 	return s.db.Delete(&account).Error
 }

@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const MaxCSVRows = 10000
+
 // ParseCSV parses a CSV file and returns transactions.
 // Expected columns: date, description, amount, type
 // amount can be a decimal like "12.50" — it will be converted to cents (1250).
@@ -52,6 +54,9 @@ func ParseCSV(reader io.Reader, accountID string) ([]models.Transaction, error) 
 	lineNum := 1
 	for {
 		lineNum++
+		if lineNum > MaxCSVRows+1 {
+			return nil, fmt.Errorf("CSV exceeds maximum of %d rows", MaxCSVRows)
+		}
 		record, err := r.Read()
 		if err == io.EOF {
 			break
