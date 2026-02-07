@@ -13,13 +13,24 @@ A personal budgeting application inspired by YNAB's envelope budgeting method. T
 
 ## Getting Started
 
-### Prerequisites
+### Docker (recommended)
 
-- [Go](https://go.dev/) 1.21+
-- [Node.js](https://nodejs.org/) 18+
-- Make
+```bash
+docker build -t budget-app .
+docker run -p 8080:8080 budget-app
+```
 
-### Running Locally
+Then open [http://localhost:8080](http://localhost:8080).
+
+Data is stored in SQLite inside the container. To persist it across restarts, mount a volume:
+
+```bash
+docker run -p 8080:8080 -v budget-data:/app/data budget-app
+```
+
+### Local Development
+
+**Prerequisites:** [Go](https://go.dev/) 1.24+, [Node.js](https://nodejs.org/) 18+, Make
 
 ```bash
 # Start both backend (port 8080) and frontend (port 5173)

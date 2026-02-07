@@ -6,6 +6,8 @@ import (
 	"budgetting-app/backend/handlers"
 	"budgetting-app/backend/services"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -70,6 +72,15 @@ func main() {
 		api.GET("/budget/category-average", budgetH.GetCategoryAverage)
 		api.PUT("/categories/:id/target", budgetH.SetCategoryTarget)
 		api.DELETE("/categories/:id/target", budgetH.DeleteCategoryTarget)
+	}
+
+	// Serve frontend static files when STATIC_DIR is set (production / Docker)
+	if staticDir := os.Getenv("STATIC_DIR"); staticDir != "" {
+		r.Static("/assets", filepath.Join(staticDir, "assets"))
+		r.StaticFile("/vite.svg", filepath.Join(staticDir, "vite.svg"))
+		r.NoRoute(func(c *gin.Context) {
+			c.File(filepath.Join(staticDir, "index.html"))
+		})
 	}
 
 	r.Run(cfg.Port)
