@@ -11,7 +11,7 @@ export default function Accounts() {
   const load = () => getAccounts().then(setAccounts);
   useEffect(() => { load(); }, []);
 
-  const handleSubmit = async (data: { name: string; type: string }) => {
+  const handleSubmit = async (data: { name: string; type: string; starting_balance?: number }) => {
     if (editing) {
       await updateAccount(editing.id, data);
     } else {
