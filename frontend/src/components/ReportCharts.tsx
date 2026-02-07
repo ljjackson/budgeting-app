@@ -7,7 +7,7 @@ const DEFAULT_COLOURS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', 
 const formatTooltip = (v: number | string | undefined) => {
   if (v === undefined) return '';
   const n = typeof v === 'string' ? parseFloat(v) : v;
-  return formatCurrency(Math.round(n * 100));
+  return formatCurrency(n);
 };
 
 interface CategoryChartProps {
@@ -17,7 +17,7 @@ interface CategoryChartProps {
 export function CategoryChart({ data }: CategoryChartProps) {
   const chartData = data.map((d, i) => ({
     name: d.category_name ?? 'Uncategorized',
-    value: Math.abs(d.total) / 100,
+    value: Math.abs(d.total),
     colour: d.colour ?? DEFAULT_COLOURS[i % DEFAULT_COLOURS.length],
   }));
 
@@ -32,7 +32,7 @@ export function CategoryChart({ data }: CategoryChartProps) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => formatCurrency(Math.round(v * 100))} />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => formatCurrency(v)} />
                 <Tooltip formatter={formatTooltip} />
                 <Bar dataKey="value">
                   {chartData.map((entry, i) => (
@@ -68,7 +68,7 @@ interface AccountChartProps {
 export function AccountChart({ data }: AccountChartProps) {
   const chartData = data.map((d, i) => ({
     name: d.account_name,
-    value: Math.abs(d.total) / 100,
+    value: Math.abs(d.total),
     colour: DEFAULT_COLOURS[i % DEFAULT_COLOURS.length],
   }));
 
@@ -82,7 +82,7 @@ export function AccountChart({ data }: AccountChartProps) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
               <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => formatCurrency(Math.round(v * 100))} />
+              <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => formatCurrency(v)} />
               <Tooltip formatter={formatTooltip} />
               <Bar dataKey="value">
                 {chartData.map((entry, i) => (
