@@ -1,12 +1,22 @@
 import { useState, useEffect } from 'react';
-import type { Transaction, Account, Category } from '../api/client';
+import type { Transaction, Account, Category } from '@/api/client';
 import {
   getTransactions, createTransaction, updateTransaction, deleteTransaction,
   getAccounts, getCategories,
-} from '../api/client';
-import TransactionForm from '../components/TransactionForm';
-import TransactionTable from '../components/TransactionTable';
-import CsvImport from '../components/CsvImport';
+} from '@/api/client';
+import TransactionForm from '@/components/TransactionForm';
+import TransactionTable from '@/components/TransactionTable';
+import CsvImport from '@/components/CsvImport';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
 
 export default function Transactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -71,92 +81,111 @@ export default function Transactions() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-gray-800">Transactions</h1>
+        <h1 className="text-2xl font-bold">Transactions</h1>
         <div className="flex gap-2">
-          <button
-            onClick={() => setShowImport(!showImport)}
-            className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
-          >
-            {showImport ? 'Hide Import' : 'Import CSV'}
-          </button>
-          <button
-            onClick={() => { setEditing(null); setShowForm(true); }}
-            className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
-          >
+          <Button variant="secondary" onClick={() => setShowImport(true)}>
+            Import CSV
+          </Button>
+          <Button onClick={() => { setEditing(null); setShowForm(true); }}>
             Add Transaction
-          </button>
+          </Button>
         </div>
       </div>
 
-      {showImport && (
-        <CsvImport accounts={accounts} onImported={loadTransactions} />
-      )}
+      <Dialog open={showImport} onOpenChange={setShowImport}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Import CSV</DialogTitle>
+            <DialogDescription>Upload a CSV file to import transactions.</DialogDescription>
+          </DialogHeader>
+          <CsvImport accounts={accounts} onImported={() => { loadTransactions(); setShowImport(false); }} />
+        </DialogContent>
+      </Dialog>
 
-      {showForm && (
-        <TransactionForm
-          transaction={editing}
-          accounts={accounts}
-          categories={categories}
-          onSubmit={handleSubmit}
-          onCancel={() => { setShowForm(false); setEditing(null); }}
-        />
-      )}
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) { setShowForm(false); setEditing(null); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Edit Transaction' : 'New Transaction'}</DialogTitle>
+            <DialogDescription>
+              {editing ? 'Update the transaction details below.' : 'Fill in the details to create a new transaction.'}
+            </DialogDescription>
+          </DialogHeader>
+          <TransactionForm
+            transaction={editing}
+            accounts={accounts}
+            categories={categories}
+            onSubmit={handleSubmit}
+            onCancel={() => { setShowForm(false); setEditing(null); }}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Filters */}
-      <div className="bg-white p-3 rounded shadow mb-4 flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="block text-xs text-gray-500">Account</label>
-          <select
-            value={filterAccount}
-            onChange={(e) => setFilterAccount(e.target.value)}
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
-          >
-            <option value="">All</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs text-gray-500">Category</label>
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
-          >
-            <option value="">All</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs text-gray-500">From</label>
-          <input
-            type="date"
-            value={filterDateFrom}
-            onChange={(e) => setFilterDateFrom(e.target.value)}
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-gray-500">To</label>
-          <input
-            type="date"
-            value={filterDateTo}
-            onChange={(e) => setFilterDateTo(e.target.value)}
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
-          />
-        </div>
-        {(filterAccount || filterCategory || filterDateFrom || filterDateTo) && (
-          <button
-            onClick={() => { setFilterAccount(''); setFilterCategory(''); setFilterDateFrom(''); setFilterDateTo(''); }}
-            className="text-sm text-gray-500 hover:text-gray-700 underline"
-          >
-            Clear filters
-          </button>
-        )}
-      </div>
+      <Card className="mb-4 py-3">
+        <CardContent className="flex flex-wrap gap-3 items-end">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Account</Label>
+            <Select
+              value={filterAccount || '__all__'}
+              onValueChange={(v) => setFilterAccount(v === '__all__' ? '' : v)}
+            >
+              <SelectTrigger size="sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All</SelectItem>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Category</Label>
+            <Select
+              value={filterCategory || '__all__'}
+              onValueChange={(v) => setFilterCategory(v === '__all__' ? '' : v)}
+            >
+              <SelectTrigger size="sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">From</Label>
+            <Input
+              type="date"
+              value={filterDateFrom}
+              onChange={(e) => setFilterDateFrom(e.target.value)}
+              className="h-8 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">To</Label>
+            <Input
+              type="date"
+              value={filterDateTo}
+              onChange={(e) => setFilterDateTo(e.target.value)}
+              className="h-8 text-sm"
+            />
+          </div>
+          {(filterAccount || filterCategory || filterDateFrom || filterDateTo) && (
+            <Button
+              variant="link"
+              size="sm"
+              onClick={() => { setFilterAccount(''); setFilterCategory(''); setFilterDateFrom(''); setFilterDateTo(''); }}
+            >
+              Clear filters
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       <TransactionTable
         transactions={transactions}

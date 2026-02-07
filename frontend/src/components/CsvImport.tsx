@@ -1,6 +1,12 @@
 import { useState } from 'react';
-import type { Account } from '../api/client';
-import { importCSV } from '../api/client';
+import type { Account } from '@/api/client';
+import { importCSV } from '@/api/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 
 interface Props {
   accounts: Account[];
@@ -35,43 +41,43 @@ export default function CsvImport({ accounts, onImported }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white p-4 rounded shadow mb-4 space-y-3">
-      <h3 className="font-medium text-gray-700">Import CSV</h3>
-      <p className="text-sm text-gray-500">CSV must have columns: date, description, amount. Optional: type (income/expense).</p>
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <h3 className="font-medium">Import CSV</h3>
+      <p className="text-sm text-muted-foreground">CSV must have columns: date, description, amount. Optional: type (income/expense).</p>
       <div className="flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Account</label>
-          <select
-            value={accountId}
-            onChange={(e) => setAccountId(Number(e.target.value))}
-            required
-            className="mt-1 block rounded border-gray-300 border px-3 py-2 text-sm"
+        <div className="space-y-1">
+          <Label>Account</Label>
+          <Select
+            value={accountId ? String(accountId) : undefined}
+            onValueChange={(v) => setAccountId(Number(v))}
           >
-            <option value={0} disabled>Select account</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Select account" />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map((a) => (
+                <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">CSV File</label>
-          <input
+        <div className="space-y-1">
+          <Label>CSV File</Label>
+          <Input
             type="file"
             accept=".csv"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="mt-1 block text-sm"
           />
         </div>
-        <button
+        <Button
           type="submit"
           disabled={loading || !file || !accountId}
-          className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 disabled:opacity-50"
         >
           {loading ? 'Importing...' : 'Import'}
-        </button>
+        </Button>
       </div>
       {result && <p className="text-sm text-green-600">{result}</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
     </form>
   );
 }

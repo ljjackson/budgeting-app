@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
-import type { CategoryReport, AccountReport } from '../api/client';
-import { getReportByCategory, getReportByAccount } from '../api/client';
-import { CategoryChart, AccountChart } from '../components/ReportCharts';
+import type { CategoryReport, AccountReport } from '@/api/client';
+import { getReportByCategory, getReportByAccount } from '@/api/client';
+import { CategoryChart, AccountChart } from '@/components/ReportCharts';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 
 export default function Reports() {
   const [categoryData, setCategoryData] = useState<CategoryReport[]>([]);
@@ -23,40 +29,46 @@ export default function Reports() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-800 mb-4">Reports</h1>
+      <h1 className="text-2xl font-bold mb-4">Reports</h1>
 
-      <div className="bg-white p-3 rounded shadow mb-4 flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="block text-xs text-gray-500">Type</label>
-          <select
-            value={txnType}
-            onChange={(e) => setTxnType(e.target.value)}
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
-          >
-            <option value="expense">Expenses</option>
-            <option value="income">Income</option>
-            <option value="">All</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs text-gray-500">From</label>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-gray-500">To</label>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
-          />
-        </div>
-      </div>
+      <Card className="mb-4 py-3">
+        <CardContent className="flex flex-wrap gap-3 items-end">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Type</Label>
+            <Select
+              value={txnType || '__all__'}
+              onValueChange={(v) => setTxnType(v === '__all__' ? '' : v)}
+            >
+              <SelectTrigger size="sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="expense">Expenses</SelectItem>
+                <SelectItem value="income">Income</SelectItem>
+                <SelectItem value="__all__">All</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">From</Label>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="h-8 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">To</Label>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="h-8 text-sm"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="space-y-4">
         <CategoryChart data={categoryData} />

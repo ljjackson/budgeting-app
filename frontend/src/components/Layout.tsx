@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 const navItems = [
   { to: '/', label: 'Transactions' },
@@ -9,16 +10,21 @@ const navItems = [
 
 export default function Layout() {
   return (
-    <div className="flex h-screen bg-gray-50">
-      <aside className="w-56 bg-gray-900 text-white flex flex-col">
-        <div className="p-4 text-xl font-bold border-b border-gray-700">Budget App</div>
+    <div className="flex h-screen bg-background">
+      <aside className="w-56 bg-sidebar-background text-sidebar-foreground flex flex-col border-r border-sidebar-border">
+        <div className="p-4 text-xl font-bold border-b border-sidebar-border">Budget App</div>
         <nav className="flex-1 p-2">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `block px-4 py-2 rounded mb-1 ${isActive ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`
+                cn(
+                  'block px-4 py-2 rounded-md mb-1 text-sm',
+                  isActive
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50'
+                )
               }
             >
               {item.label}

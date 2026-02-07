@@ -1,6 +1,7 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import type { CategoryReport, AccountReport } from '../api/client';
-import { formatCurrency } from '../utils/currency';
+import type { CategoryReport, AccountReport } from '@/api/client';
+import { formatCurrency } from '@/utils/currency';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 const DEFAULT_COLOURS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
 
@@ -22,42 +23,46 @@ export function CategoryChart({ data }: CategoryChartProps) {
   }));
 
   return (
-    <div className="bg-white p-4 rounded shadow">
-      <h3 className="font-medium text-gray-700 mb-4">Spending by Category</h3>
-      {chartData.length === 0 ? (
-        <p className="text-gray-400 text-center py-8">No data</p>
-      ) : (
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1" style={{ height: 300 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => formatCurrency(v)} />
-                <Tooltip formatter={formatTooltip} />
-                <Bar dataKey="value">
-                  {chartData.map((entry, i) => (
-                    <Cell key={i} fill={entry.colour} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+    <Card>
+      <CardHeader>
+        <CardTitle>Spending by Category</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {chartData.length === 0 ? (
+          <p className="text-muted-foreground text-center py-8">No data</p>
+        ) : (
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex-1" style={{ height: 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => formatCurrency(v)} />
+                  <Tooltip formatter={formatTooltip} />
+                  <Bar dataKey="value">
+                    {chartData.map((entry, i) => (
+                      <Cell key={i} fill={entry.colour} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex-1" style={{ height: 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                    {chartData.map((entry, i) => (
+                      <Cell key={i} fill={entry.colour} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={formatTooltip} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div className="flex-1" style={{ height: 300 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}>
-                  {chartData.map((entry, i) => (
-                    <Cell key={i} fill={entry.colour} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={formatTooltip} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -73,26 +78,30 @@ export function AccountChart({ data }: AccountChartProps) {
   }));
 
   return (
-    <div className="bg-white p-4 rounded shadow">
-      <h3 className="font-medium text-gray-700 mb-4">Spending by Account</h3>
-      {chartData.length === 0 ? (
-        <p className="text-gray-400 text-center py-8">No data</p>
-      ) : (
-        <div style={{ height: 300 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => formatCurrency(v)} />
-              <Tooltip formatter={formatTooltip} />
-              <Bar dataKey="value">
-                {chartData.map((entry, i) => (
-                  <Cell key={i} fill={entry.colour} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Spending by Account</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {chartData.length === 0 ? (
+          <p className="text-muted-foreground text-center py-8">No data</p>
+        ) : (
+          <div style={{ height: 300 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => formatCurrency(v)} />
+                <Tooltip formatter={formatTooltip} />
+                <Bar dataKey="value">
+                  {chartData.map((entry, i) => (
+                    <Cell key={i} fill={entry.colour} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

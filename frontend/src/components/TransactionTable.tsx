@@ -1,6 +1,13 @@
-import type { Transaction, Category } from '../api/client';
-import { formatCurrency } from '../utils/currency';
-import { formatDate } from '../utils/format';
+import type { Transaction, Category } from '@/api/client';
+import { formatCurrency } from '@/utils/currency';
+import { formatDate } from '@/utils/format';
+import { Button } from '@/components/ui/button';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
+} from '@/components/ui/table';
 
 interface Props {
   transactions: Transaction[];
@@ -12,54 +19,56 @@ interface Props {
 
 export default function TransactionTable({ transactions, categories, onEdit, onDelete, onCategoryChange }: Props) {
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full bg-white rounded shadow">
-        <thead>
-          <tr className="bg-gray-100 text-left text-sm text-gray-600">
-            <th className="px-4 py-3">Date</th>
-            <th className="px-4 py-3">Description</th>
-            <th className="px-4 py-3">Amount</th>
-            <th className="px-4 py-3">Account</th>
-            <th className="px-4 py-3">Category</th>
-            <th className="px-4 py-3">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {transactions.map((txn) => (
-            <tr key={txn.id} className="border-t border-gray-100 text-sm">
-              <td className="px-4 py-3">{formatDate(txn.date)}</td>
-              <td className="px-4 py-3">{txn.description}</td>
-              <td className={`px-4 py-3 font-medium ${txn.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(txn.amount)}
-              </td>
-              <td className="px-4 py-3">{txn.account?.name ?? '-'}</td>
-              <td className="px-4 py-3">
-                <select
-                  value={txn.category_id ?? ''}
-                  onChange={(e) => onCategoryChange(txn.id, e.target.value === '' ? null : Number(e.target.value))}
-                  className="rounded border border-gray-300 px-2 py-1 text-sm"
-                >
-                  <option value="">Uncategorized</option>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Date</TableHead>
+          <TableHead>Description</TableHead>
+          <TableHead>Amount</TableHead>
+          <TableHead>Account</TableHead>
+          <TableHead>Category</TableHead>
+          <TableHead>Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {transactions.map((txn) => (
+          <TableRow key={txn.id}>
+            <TableCell>{formatDate(txn.date)}</TableCell>
+            <TableCell>{txn.description}</TableCell>
+            <TableCell className={`font-medium ${txn.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(txn.amount)}
+            </TableCell>
+            <TableCell>{txn.account?.name ?? '-'}</TableCell>
+            <TableCell>
+              <Select
+                value={txn.category_id ? String(txn.category_id) : '__none__'}
+                onValueChange={(v) => onCategoryChange(txn.id, v === '__none__' ? null : Number(v))}
+              >
+                <SelectTrigger size="sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Uncategorized</SelectItem>
                   {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
                   ))}
-                </select>
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex gap-1">
-                  <button onClick={() => onEdit(txn)} className="text-blue-600 hover:text-blue-800 text-sm">Edit</button>
-                  <button onClick={() => onDelete(txn.id)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
-                </div>
-              </td>
-            </tr>
-          ))}
-          {transactions.length === 0 && (
-            <tr>
-              <td colSpan={6} className="px-4 py-8 text-center text-gray-400">No transactions found</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+                </SelectContent>
+              </Select>
+            </TableCell>
+            <TableCell>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" onClick={() => onEdit(txn)}>Edit</Button>
+                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => onDelete(txn.id)}>Delete</Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+        {transactions.length === 0 && (
+          <TableRow>
+            <TableCell colSpan={6} className="text-center text-muted-foreground py-8">No transactions found</TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
   );
 }
