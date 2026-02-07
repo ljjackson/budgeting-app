@@ -18,12 +18,16 @@ func NewBudgetService(db *gorm.DB) *BudgetService {
 }
 
 type BudgetCategoryRow struct {
-	CategoryID   uint   `json:"category_id"`
-	CategoryName string `json:"category_name"`
-	Colour       string `json:"colour"`
-	Assigned     int64  `json:"assigned"`
-	Activity     int64  `json:"activity"`
-	Available    int64  `json:"available"`
+	CategoryID   uint    `json:"category_id"`
+	CategoryName string  `json:"category_name"`
+	Colour       string  `json:"colour"`
+	Assigned     int64   `json:"assigned"`
+	Activity     int64   `json:"activity"`
+	Available    int64   `json:"available"`
+	TargetType   *string `json:"target_type"`
+	TargetAmount *int64  `json:"target_amount"`
+	TargetDate   *string `json:"target_date"`
+	Underfunded  *int64  `json:"underfunded"`
 }
 
 type BudgetResponse struct {
@@ -31,6 +35,7 @@ type BudgetResponse struct {
 	Income                int64               `json:"income"`
 	TotalAssigned         int64               `json:"total_assigned"`
 	ReadyToAssign         int64               `json:"ready_to_assign"`
+	TotalUnderfunded      int64               `json:"total_underfunded"`
 	UncategorizedExpenses int64               `json:"uncategorized_expenses"`
 	Categories            []BudgetCategoryRow `json:"categories"`
 }
@@ -94,10 +99,19 @@ func (s *BudgetService) GetBudget(month string) (*BudgetResponse, error) {
 	var uncategorizedExpenses int64
 	s.db.Raw("SELECT COUNT(*) FROM transactions WHERE type='expense' AND category_id IS NULL AND date >= ? AND date <= ?", firstDay, lastDay).Scan(&uncategorizedExpenses)
 
-	// 6. Build category rows
+	// 6. Load category targets active for this month
+	var targets []models.CategoryTarget
+	s.db.Where("effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)", month, month).Find(&targets)
+	targetMap := make(map[uint]models.CategoryTarget)
+	for _, t := range targets {
+		targetMap[t.CategoryID] = t
+	}
+
+	// 7. Build category rows
 	rows := make([]BudgetCategoryRow, 0, len(categories))
 	var totalAssigned int64
 	var cumulativeTotalAssigned int64
+	var totalUnderfunded int64
 	for _, cat := range categories {
 		assigned := monthAllocMap[cat.ID]
 		activity := monthExpenseMap[cat.ID]
@@ -108,14 +122,25 @@ func (s *BudgetService) GetBudget(month string) (*BudgetResponse, error) {
 		totalAssigned += assigned
 		cumulativeTotalAssigned += cumAssigned
 
-		rows = append(rows, BudgetCategoryRow{
+		row := BudgetCategoryRow{
 			CategoryID:   cat.ID,
 			CategoryName: cat.Name,
 			Colour:       cat.Colour,
 			Assigned:     assigned,
 			Activity:     activity,
 			Available:    available,
-		})
+		}
+
+		if target, ok := targetMap[cat.ID]; ok {
+			row.TargetType = &target.TargetType
+			row.TargetAmount = &target.TargetAmount
+			row.TargetDate = target.TargetDate
+			uf := computeUnderfunded(target, assigned, available, month)
+			row.Underfunded = &uf
+			totalUnderfunded += uf
+		}
+
+		rows = append(rows, row)
 	}
 
 	readyToAssign := income.CumulativeIncome - cumulativeTotalAssigned
@@ -125,6 +150,7 @@ func (s *BudgetService) GetBudget(month string) (*BudgetResponse, error) {
 		Income:                income.MonthIncome,
 		TotalAssigned:         totalAssigned,
 		ReadyToAssign:         readyToAssign,
+		TotalUnderfunded:      totalUnderfunded,
 		UncategorizedExpenses: uncategorizedExpenses,
 		Categories:            rows,
 	}, nil
@@ -162,6 +188,115 @@ func (s *BudgetService) GetCategoryAverage(categoryID uint, month string) (int64
 
 	average := int64(math.Round(float64(total) / 3.0))
 	return average, nil
+}
+
+func (s *BudgetService) SetCategoryTarget(categoryID uint, month string, targetType string, targetAmount int64, targetDate *string) (*models.CategoryTarget, error) {
+	var cat models.Category
+	if err := s.db.First(&cat, categoryID).Error; err != nil {
+		return nil, err
+	}
+
+	// Close any active target that covers this month
+	s.closeActiveTarget(categoryID, month)
+
+	target := models.CategoryTarget{
+		CategoryID:    categoryID,
+		TargetType:    targetType,
+		TargetAmount:  targetAmount,
+		TargetDate:    targetDate,
+		EffectiveFrom: month,
+	}
+	if err := s.db.Create(&target).Error; err != nil {
+		return nil, err
+	}
+	return &target, nil
+}
+
+func (s *BudgetService) DeleteCategoryTarget(categoryID uint, month string) error {
+	var target models.CategoryTarget
+	err := s.db.Where("category_id = ? AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)",
+		categoryID, month, month).First(&target).Error
+	if err != nil {
+		return gorm.ErrRecordNotFound
+	}
+
+	if target.EffectiveFrom == month {
+		// Target started this month — just delete it entirely
+		return s.db.Delete(&target).Error
+	}
+	// Target started before this month — close it at this month
+	return s.db.Model(&target).Update("effective_to", month).Error
+}
+
+// closeActiveTarget closes any active target for a category at the given month.
+func (s *BudgetService) closeActiveTarget(categoryID uint, month string) {
+	var existing models.CategoryTarget
+	err := s.db.Where("category_id = ? AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)",
+		categoryID, month, month).First(&existing).Error
+	if err != nil {
+		return
+	}
+	if existing.EffectiveFrom == month {
+		// Same start month — replace entirely
+		s.db.Delete(&existing)
+	} else {
+		s.db.Model(&existing).Update("effective_to", month)
+	}
+}
+
+func computeUnderfunded(target models.CategoryTarget, assigned int64, available int64, currentMonth string) int64 {
+	switch target.TargetType {
+	case "monthly_savings":
+		uf := target.TargetAmount - assigned
+		if uf < 0 {
+			return 0
+		}
+		return uf
+
+	case "savings_balance", "spending_by_date":
+		shortfall := target.TargetAmount - available
+		if shortfall <= 0 {
+			return 0
+		}
+		if target.TargetDate == nil {
+			// No date set — treat as needing full shortfall now
+			uf := shortfall - assigned
+			if uf < 0 {
+				return 0
+			}
+			return uf
+		}
+
+		current, _ := time.Parse("2006-01", currentMonth)
+		targetTime, _ := time.Parse("2006-01", *target.TargetDate)
+
+		// Count months remaining (including target month)
+		months := monthsBetween(current, targetTime)
+		if months <= 0 {
+			// Target date passed or is current month — need full remaining shortfall
+			uf := shortfall
+			if uf < 0 {
+				return 0
+			}
+			return uf
+		}
+
+		monthlyNeeded := int64(math.Ceil(float64(shortfall) / float64(months)))
+		uf := monthlyNeeded - assigned
+		if uf < 0 {
+			return 0
+		}
+		return uf
+
+	default:
+		return 0
+	}
+}
+
+func monthsBetween(from, to time.Time) int {
+	years := to.Year() - from.Year()
+	months := int(to.Month()) - int(from.Month())
+	return years*12 + months
 }
 
 func monthDateRange(month string) (string, string) {

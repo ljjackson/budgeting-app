@@ -1,4 +1,3 @@
-import type { BudgetCategoryRow } from '@/api/client';
 import { useState, useCallback } from 'react';
 import { useBudget, useAllocateBudget } from '@/hooks/useBudget';
 import { useMonthNavigator } from '@/hooks/useMonthNavigator';
@@ -11,20 +10,42 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle } from 'lucide-react';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { AlertTriangle, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import MonthNavigator from '@/components/MonthNavigator';
 import CategoryDetailPanel from '@/components/CategoryDetailPanel';
 
 export default function Budget() {
-  const { currentYear, currentMonth, monthStr, prevMonth, nextMonth } = useMonthNavigator();
+  const { currentYear, currentMonth, monthStr, prevMonth, nextMonth, canGoNext } = useMonthNavigator({ maxMonthsAhead: 1 });
   const { data: budget, isLoading, isError, error } = useBudget(monthStr);
   const allocateMutation = useAllocateBudget();
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const closePanel = useCallback(() => setSelectedCategoryId(null), []);
   const selectedCategory = budget?.categories.find(c => c.category_id === selectedCategoryId) ?? null;
+
+  const [fundingAll, setFundingAll] = useState(false);
+  const canFundAll = budget != null && budget.total_underfunded > 0 && budget.ready_to_assign >= budget.total_underfunded;
+
+  const fundAllUnderfunded = async () => {
+    if (!budget || fundingAll) return;
+    setFundingAll(true);
+    try {
+      for (const row of budget.categories) {
+        if (row.underfunded != null && row.underfunded > 0) {
+          await allocateMutation.mutateAsync({
+            month: monthStr,
+            category_id: row.category_id,
+            amount: row.assigned + row.underfunded,
+          });
+        }
+      }
+    } finally {
+      setFundingAll(false);
+    }
+  };
 
   const inlineEdit = useInlineEdit<number>({
     onCommit: (categoryId, value) => {
@@ -52,6 +73,7 @@ export default function Budget() {
         currentYear={currentYear}
         onPrev={prevMonth}
         onNext={nextMonth}
+        canGoNext={canGoNext}
       />
 
       {/* Summary card */}
@@ -76,6 +98,33 @@ export default function Budget() {
                   {formatCurrency(budget.ready_to_assign)}
                 </span>
               </span>
+              {budget.total_underfunded > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="link"
+                      className={cn(
+                        'p-0 h-auto text-sm',
+                        canFundAll
+                          ? 'text-yellow-600 underline decoration-dotted hover:decoration-solid cursor-pointer'
+                          : 'text-yellow-600/60 no-underline cursor-not-allowed'
+                      )}
+                      disabled={!canFundAll || fundingAll}
+                      onClick={fundAllUnderfunded}
+                    >
+                      Underfunded:{' '}
+                      <span className="font-medium">
+                        {fundingAll ? 'Assigning...' : formatCurrency(budget.total_underfunded)}
+                      </span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {canFundAll
+                      ? `Auto-assign ${formatCurrency(budget.total_underfunded)} across all underfunded categories`
+                      : 'Not enough in Ready to Assign to cover all underfunded categories'}
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
           ) : null}
         </CardContent>
@@ -133,6 +182,42 @@ export default function Budget() {
                         style={{ backgroundColor: row.colour }}
                       />
                       {row.category_name}
+                      {row.underfunded != null && row.underfunded > 0 && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-800 cursor-pointer transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                allocateMutation.mutate({
+                                  month: monthStr,
+                                  category_id: row.category_id,
+                                  amount: row.assigned + row.underfunded!,
+                                });
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  allocateMutation.mutate({
+                                    month: monthStr,
+                                    category_id: row.category_id,
+                                    amount: row.assigned + row.underfunded!,
+                                  });
+                                }
+                              }}
+                            >
+                              <Target className="h-3 w-3" />
+                              {formatCurrency(row.underfunded)} needed
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Click to assign {formatCurrency(row.underfunded)} to meet target
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     </button>
                   </TableCell>
                   <TableCell>
@@ -165,20 +250,26 @@ export default function Budget() {
                     row.available >= 0 ? 'text-green-600' : 'text-red-600'
                   )}>
                     {row.available < 0 ? (
-                      <Button
-                        variant="link"
-                        className="p-0 h-auto font-medium text-red-600 underline decoration-dotted hover:decoration-solid"
-                        title={`Quick-assign ${formatCurrency(Math.abs(row.available))} to cover shortfall`}
-                        onClick={() => {
-                          allocateMutation.mutate({
-                            month: monthStr,
-                            category_id: row.category_id,
-                            amount: row.assigned + Math.abs(row.available),
-                          });
-                        }}
-                      >
-                        {formatCurrency(row.available)}
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="link"
+                            className="p-0 h-auto font-medium text-red-600 underline decoration-dotted hover:decoration-solid"
+                            onClick={() => {
+                              allocateMutation.mutate({
+                                month: monthStr,
+                                category_id: row.category_id,
+                                amount: row.assigned + Math.abs(row.available),
+                              });
+                            }}
+                          >
+                            {formatCurrency(row.available)}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Click to assign {formatCurrency(Math.abs(row.available))} to cover shortfall
+                        </TooltipContent>
+                      </Tooltip>
                     ) : (
                       formatCurrency(row.available)
                     )}

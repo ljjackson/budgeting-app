@@ -158,6 +158,10 @@ export interface BudgetCategoryRow {
   assigned: number; // cents
   activity: number; // cents
   available: number; // cents
+  target_type: string | null;
+  target_amount: number | null;
+  target_date: string | null;
+  underfunded: number | null;
 }
 
 export interface BudgetResponse {
@@ -165,8 +169,28 @@ export interface BudgetResponse {
   income: number; // cents
   total_assigned: number; // cents
   ready_to_assign: number; // cents
+  total_underfunded: number;
   uncategorized_expenses: number;
   categories: BudgetCategoryRow[];
+}
+
+export type TargetType = 'monthly_savings' | 'savings_balance' | 'spending_by_date';
+
+export interface CategoryTarget {
+  id: number;
+  category_id: number;
+  target_type: TargetType;
+  target_amount: number;
+  target_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SetCategoryTargetRequest {
+  month: string;
+  target_type: TargetType;
+  target_amount: number;
+  target_date?: string;
 }
 
 export interface AllocateBudgetRequest {
@@ -187,3 +211,9 @@ export interface CategoryAverageResponse {
 
 export const getCategoryAverage = (categoryId: number, month: string) =>
   request<CategoryAverageResponse>(`/budget/category-average?category_id=${categoryId}&month=${month}`);
+
+export const setCategoryTarget = (categoryId: number, data: SetCategoryTargetRequest) =>
+  request<CategoryTarget>(`/categories/${categoryId}/target`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const deleteCategoryTarget = (categoryId: number, month: string) =>
+  request<void>(`/categories/${categoryId}/target?month=${month}`, { method: 'DELETE' });

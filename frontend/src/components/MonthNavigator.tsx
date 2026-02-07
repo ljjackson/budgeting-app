@@ -7,9 +7,10 @@ interface MonthNavigatorProps {
   currentYear: number;
   onPrev: () => void;
   onNext: () => void;
+  canGoNext?: boolean;
 }
 
-export default function MonthNavigator({ currentMonth, currentYear, onPrev, onNext }: MonthNavigatorProps) {
+export default function MonthNavigator({ currentMonth, currentYear, onPrev, onNext, canGoNext = true }: MonthNavigatorProps) {
   return (
     <div className="flex items-center justify-center gap-2 mb-4">
       <Button variant="outline" size="icon-sm" onClick={onPrev}>
@@ -18,7 +19,7 @@ export default function MonthNavigator({ currentMonth, currentYear, onPrev, onNe
       <span className="w-48 text-center font-medium">
         {MONTH_NAMES[currentMonth]} {currentYear}
       </span>
-      <Button variant="outline" size="icon-sm" onClick={onNext}>
+      <Button variant="outline" size="icon-sm" onClick={onNext} disabled={!canGoNext}>
         <ChevronRight className="h-4 w-4" />
       </Button>
     </div>

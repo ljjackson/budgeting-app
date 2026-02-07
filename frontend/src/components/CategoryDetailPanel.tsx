@@ -1,14 +1,24 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import type { BudgetCategoryRow } from '@/api/client';
+import type { BudgetCategoryRow, TargetType } from '@/api/client';
 import { formatCurrency, centsToDecimal, resolveAssignedInput } from '@/utils/currency';
 import { formatDate } from '@/utils/format';
 import { cn } from '@/lib/utils';
-import { useAllocateBudget } from '@/hooks/useBudget';
+import { useAllocateBudget, useSetCategoryTarget, useDeleteCategoryTarget } from '@/hooks/useBudget';
 import { useCategoryTransactions, useCategoryAverage } from '@/hooks/useCategoryTransactions';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { X } from 'lucide-react';
+
+const TARGET_TYPE_LABELS: Record<TargetType, string> = {
+  monthly_savings: 'Monthly Savings',
+  savings_balance: 'Savings Balance',
+  spending_by_date: 'Spending by Date',
+};
 
 interface CategoryDetailPanelProps {
   category: BudgetCategoryRow | null;
@@ -30,10 +40,18 @@ export default function CategoryDetailPanel({
     month,
   );
   const allocateMutation = useAllocateBudget();
+  const setTargetMutation = useSetCategoryTarget();
+  const deleteTargetMutation = useDeleteCategoryTarget(month);
 
   const [editingAssigned, setEditingAssigned] = useState(false);
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Target form state
+  const [editingTarget, setEditingTarget] = useState(false);
+  const [targetType, setTargetType] = useState<TargetType>('monthly_savings');
+  const [targetAmount, setTargetAmount] = useState('');
+  const [targetDate, setTargetDate] = useState('');
 
   useEffect(() => {
     if (editingAssigned) {
@@ -45,6 +63,7 @@ export default function CategoryDetailPanel({
   // Reset editing state when category changes
   useEffect(() => {
     setEditingAssigned(false);
+    setEditingTarget(false);
   }, [category?.category_id]);
 
 
@@ -68,6 +87,43 @@ export default function CategoryDetailPanel({
   const cancelEdit = () => {
     setEditingAssigned(false);
   };
+
+  const startEditingTarget = () => {
+    if (!category) return;
+    if (category.target_type) {
+      setTargetType(category.target_type as TargetType);
+      setTargetAmount(centsToDecimal(category.target_amount ?? 0));
+      setTargetDate(category.target_date ?? '');
+    } else {
+      setTargetType('monthly_savings');
+      setTargetAmount('');
+      setTargetDate('');
+    }
+    setEditingTarget(true);
+  };
+
+  const saveTarget = () => {
+    if (!category) return;
+    const amountCents = Math.round(parseFloat(targetAmount || '0') * 100);
+    if (amountCents <= 0) return;
+    setTargetMutation.mutate({
+      categoryId: category.category_id,
+      request: {
+        month,
+        target_type: targetType,
+        target_amount: amountCents,
+        ...(targetType !== 'monthly_savings' ? { target_date: targetDate } : {}),
+      },
+    });
+    setEditingTarget(false);
+  };
+
+  const removeTarget = () => {
+    if (!category) return;
+    deleteTargetMutation.mutate(category.category_id);
+  };
+
+  const needsDate = targetType !== 'monthly_savings';
 
   const portalTarget = document.getElementById('app-shell');
 
@@ -162,6 +218,83 @@ export default function CategoryDetailPanel({
             </p>
           </div>
         )}
+
+        {/* Target section */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium">Target</h3>
+          {editingTarget ? (
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Type</label>
+                <Select value={targetType} onValueChange={(v) => setTargetType(v as TargetType)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly_savings">Monthly Savings</SelectItem>
+                    <SelectItem value="savings_balance">Savings Balance</SelectItem>
+                    <SelectItem value="spending_by_date">Spending by Date</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Amount</label>
+                <Input
+                  type="text"
+                  value={targetAmount}
+                  onChange={(e) => setTargetAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="h-8 text-sm"
+                />
+              </div>
+              {needsDate && (
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Target month</label>
+                  <Input
+                    type="month"
+                    value={targetDate}
+                    onChange={(e) => setTargetDate(e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button size="sm" onClick={saveTarget}>Save</Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditingTarget(false)}>Cancel</Button>
+              </div>
+            </div>
+          ) : category.target_type ? (
+            <div className="space-y-2 rounded-md border p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  {TARGET_TYPE_LABELS[category.target_type as TargetType] ?? category.target_type}
+                </span>
+                <span className="text-sm font-medium">{formatCurrency(category.target_amount ?? 0)}</span>
+              </div>
+              {category.target_date && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Target date</span>
+                  <span className="text-sm">{category.target_date}</span>
+                </div>
+              )}
+              {category.underfunded != null && category.underfunded > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Underfunded</span>
+                  <span className="text-sm font-medium text-yellow-600">{formatCurrency(category.underfunded)}</span>
+                </div>
+              )}
+              {category.underfunded != null && category.underfunded === 0 && (
+                <p className="text-xs text-green-600">Fully funded this month</p>
+              )}
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={startEditingTarget}>Edit</Button>
+                <Button size="sm" variant="ghost" onClick={removeTarget}>Remove</Button>
+              </div>
+            </div>
+          ) : (
+            <Button size="sm" variant="outline" onClick={startEditingTarget}>Set Target</Button>
+          )}
+        </div>
 
         {/* 3-month average */}
         {avgData && (

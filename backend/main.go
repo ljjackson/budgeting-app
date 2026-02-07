@@ -68,6 +68,8 @@ func main() {
 		api.GET("/budget", budgetH.GetBudget)
 		api.PUT("/budget/allocate", budgetH.AllocateBudget)
 		api.GET("/budget/category-average", budgetH.GetCategoryAverage)
+		api.PUT("/categories/:id/target", budgetH.SetCategoryTarget)
+		api.DELETE("/categories/:id/target", budgetH.DeleteCategoryTarget)
 	}
 
 	r.Run(cfg.Port)

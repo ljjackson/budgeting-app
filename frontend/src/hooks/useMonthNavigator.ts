@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 
-export function useMonthNavigator() {
+export function useMonthNavigator(options?: { maxMonthsAhead?: number }) {
   const now = new Date();
   const [currentYear, setCurrentYear] = useState(now.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(now.getMonth());
@@ -14,6 +14,13 @@ export function useMonthNavigator() {
     return { dateFrom, dateTo };
   }, [currentYear, currentMonth]);
 
+  const canGoNext = useMemo(() => {
+    if (options?.maxMonthsAhead == null) return true;
+    const maxDate = new Date(now.getFullYear(), now.getMonth() + options.maxMonthsAhead, 1);
+    const current = new Date(currentYear, currentMonth, 1);
+    return current < maxDate;
+  }, [currentYear, currentMonth, options?.maxMonthsAhead]);
+
   const prevMonth = useCallback(() => {
     if (currentMonth === 0) {
       setCurrentMonth(11);
@@ -24,13 +31,14 @@ export function useMonthNavigator() {
   }, [currentMonth]);
 
   const nextMonth = useCallback(() => {
+    if (!canGoNext) return;
     if (currentMonth === 11) {
       setCurrentMonth(0);
       setCurrentYear(y => y + 1);
     } else {
       setCurrentMonth(m => m + 1);
     }
-  }, [currentMonth]);
+  }, [currentMonth, canGoNext]);
 
-  return { currentYear, currentMonth, monthStr, dateRange, prevMonth, nextMonth };
+  return { currentYear, currentMonth, monthStr, dateRange, prevMonth, nextMonth, canGoNext };
 }

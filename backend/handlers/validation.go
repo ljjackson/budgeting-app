@@ -17,3 +17,7 @@ func validateDate(d string) bool        { _, err := time.Parse("2006-01-02", d);
 var monthRegex = regexp.MustCompile(`^\d{4}-(0[1-9]|1[0-2])$`)
 
 func validateMonth(m string) bool { return monthRegex.MatchString(m) }
+
+var validTargetTypes = map[string]bool{"monthly_savings": true, "savings_balance": true, "spending_by_date": true}
+
+func validateTargetType(t string) bool { return validTargetTypes[t] }

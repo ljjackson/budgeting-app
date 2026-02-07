@@ -144,6 +144,314 @@ func TestBudgetService_AllocateUpsert(t *testing.T) {
 	}
 }
 
+func TestBudgetService_SetCategoryTarget(t *testing.T) {
+	svc, _, category := setupBudgetTest(t)
+
+	// Create target
+	target, err := svc.SetCategoryTarget(category.ID, "2024-01", "monthly_savings", 50000, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if target.TargetType != "monthly_savings" {
+		t.Errorf("expected target_type monthly_savings, got %s", target.TargetType)
+	}
+	if target.TargetAmount != 50000 {
+		t.Errorf("expected target_amount 50000, got %d", target.TargetAmount)
+	}
+	if target.EffectiveFrom != "2024-01" {
+		t.Errorf("expected effective_from 2024-01, got %s", target.EffectiveFrom)
+	}
+
+	// Set new target in same month — replaces the old one
+	date := "2027-01"
+	target2, err := svc.SetCategoryTarget(category.ID, "2024-01", "savings_balance", 400000, &date)
+	if err != nil {
+		t.Fatalf("unexpected error on replace: %v", err)
+	}
+	if target2.TargetType != "savings_balance" {
+		t.Errorf("expected target_type savings_balance after replace, got %s", target2.TargetType)
+	}
+
+	// Verify only one target exists (old one was deleted since same effective_from)
+	var targets []models.CategoryTarget
+	svc.db.Find(&targets)
+	if len(targets) != 1 {
+		t.Errorf("expected 1 target after same-month replace, got %d", len(targets))
+	}
+}
+
+func TestBudgetService_SetCategoryTarget_Versioning(t *testing.T) {
+	svc, _, category := setupBudgetTest(t)
+
+	// Set target in January
+	svc.SetCategoryTarget(category.ID, "2024-01", "monthly_savings", 50000, nil)
+
+	// Change target in March — should close the January target
+	date := "2025-01"
+	svc.SetCategoryTarget(category.ID, "2024-03", "savings_balance", 200000, &date)
+
+	var targets []models.CategoryTarget
+	svc.db.Order("id").Find(&targets)
+	if len(targets) != 2 {
+		t.Fatalf("expected 2 targets (versioned), got %d", len(targets))
+	}
+
+	// First target: closed at 2024-03
+	if targets[0].EffectiveTo == nil || *targets[0].EffectiveTo != "2024-03" {
+		t.Errorf("expected first target effective_to 2024-03, got %v", targets[0].EffectiveTo)
+	}
+	// Second target: open from 2024-03
+	if targets[1].EffectiveFrom != "2024-03" {
+		t.Errorf("expected second target effective_from 2024-03, got %s", targets[1].EffectiveFrom)
+	}
+	if targets[1].EffectiveTo != nil {
+		t.Errorf("expected second target effective_to nil, got %v", *targets[1].EffectiveTo)
+	}
+
+	// January should still see the old target
+	resp, _ := svc.GetBudget("2024-01")
+	for _, row := range resp.Categories {
+		if row.CategoryID == category.ID {
+			if row.TargetType == nil || *row.TargetType != "monthly_savings" {
+				t.Errorf("expected monthly_savings target in Jan, got %v", row.TargetType)
+			}
+		}
+	}
+
+	// March should see the new target
+	resp, _ = svc.GetBudget("2024-03")
+	for _, row := range resp.Categories {
+		if row.CategoryID == category.ID {
+			if row.TargetType == nil || *row.TargetType != "savings_balance" {
+				t.Errorf("expected savings_balance target in Mar, got %v", row.TargetType)
+			}
+		}
+	}
+}
+
+func TestBudgetService_DeleteCategoryTarget(t *testing.T) {
+	svc, _, category := setupBudgetTest(t)
+
+	// Delete non-existent should error
+	err := svc.DeleteCategoryTarget(category.ID, "2024-01")
+	if err == nil {
+		t.Error("expected error when deleting non-existent target")
+	}
+
+	// Create target in January and delete in January — should fully delete
+	svc.SetCategoryTarget(category.ID, "2024-01", "monthly_savings", 50000, nil)
+	err = svc.DeleteCategoryTarget(category.ID, "2024-01")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var targets []models.CategoryTarget
+	svc.db.Find(&targets)
+	if len(targets) != 0 {
+		t.Errorf("expected 0 targets after same-month delete, got %d", len(targets))
+	}
+}
+
+func TestBudgetService_DeleteCategoryTarget_ClosesHistory(t *testing.T) {
+	svc, _, category := setupBudgetTest(t)
+
+	// Create target in January, delete in March — should close, not delete
+	svc.SetCategoryTarget(category.ID, "2024-01", "monthly_savings", 50000, nil)
+	err := svc.DeleteCategoryTarget(category.ID, "2024-03")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var targets []models.CategoryTarget
+	svc.db.Find(&targets)
+	if len(targets) != 1 {
+		t.Fatalf("expected 1 target (closed, not deleted), got %d", len(targets))
+	}
+	if targets[0].EffectiveTo == nil || *targets[0].EffectiveTo != "2024-03" {
+		t.Errorf("expected effective_to 2024-03, got %v", targets[0].EffectiveTo)
+	}
+
+	// January should still see the target
+	resp, _ := svc.GetBudget("2024-01")
+	for _, row := range resp.Categories {
+		if row.CategoryID == category.ID {
+			if row.TargetType == nil {
+				t.Error("expected target visible in January after close")
+			}
+		}
+	}
+
+	// March should NOT see the target
+	resp, _ = svc.GetBudget("2024-03")
+	for _, row := range resp.Categories {
+		if row.CategoryID == category.ID {
+			if row.TargetType != nil {
+				t.Error("expected no target visible in March after close")
+			}
+		}
+	}
+}
+
+func TestBudgetService_GetBudget_MonthlySavingsTarget(t *testing.T) {
+	svc, account, category := setupBudgetTest(t)
+
+	svc.db.Create(&models.Transaction{
+		AccountID: account.ID, Amount: 300000, Description: "Salary",
+		Date: "2024-01-15", Type: "income",
+	})
+
+	// Set monthly savings target of 10000 starting Jan
+	svc.SetCategoryTarget(category.ID, "2024-01", "monthly_savings", 10000, nil)
+
+	// Partially funded: assigned 6000 of 10000
+	svc.AllocateBudget("2024-01", category.ID, 6000)
+	resp, _ := svc.GetBudget("2024-01")
+	for _, row := range resp.Categories {
+		if row.CategoryID == category.ID {
+			if row.Underfunded == nil {
+				t.Fatal("expected underfunded to be set")
+			}
+			if *row.Underfunded != 4000 {
+				t.Errorf("expected underfunded 4000, got %d", *row.Underfunded)
+			}
+		}
+	}
+
+	// Fully funded: assigned 10000
+	svc.AllocateBudget("2024-01", category.ID, 10000)
+	resp, _ = svc.GetBudget("2024-01")
+	for _, row := range resp.Categories {
+		if row.CategoryID == category.ID {
+			if *row.Underfunded != 0 {
+				t.Errorf("expected underfunded 0 when fully funded, got %d", *row.Underfunded)
+			}
+		}
+	}
+}
+
+func TestBudgetService_GetBudget_SavingsBalanceTarget(t *testing.T) {
+	svc, account, category := setupBudgetTest(t)
+
+	svc.db.Create(&models.Transaction{
+		AccountID: account.ID, Amount: 500000, Description: "Salary",
+		Date: "2024-01-15", Type: "income",
+	})
+
+	// Target: save 120000 by 2024-04, set in Jan
+	date := "2024-04"
+	svc.SetCategoryTarget(category.ID, "2024-01", "savings_balance", 120000, &date)
+
+	// Assign 30000 in Jan
+	svc.AllocateBudget("2024-01", category.ID, 30000)
+	resp, _ := svc.GetBudget("2024-01")
+	for _, row := range resp.Categories {
+		if row.CategoryID == category.ID {
+			if row.Underfunded == nil {
+				t.Fatal("expected underfunded to be set")
+			}
+			// available = 30000, shortfall = 120000-30000 = 90000
+			// months remaining from 2024-01 to 2024-04 = 3
+			// monthly needed = ceil(90000/3) = 30000
+			// underfunded = 30000 - 30000 = 0
+			if *row.Underfunded != 0 {
+				t.Errorf("expected underfunded 0, got %d", *row.Underfunded)
+			}
+		}
+	}
+
+	// Assign only 20000 instead
+	svc.AllocateBudget("2024-01", category.ID, 20000)
+	resp, _ = svc.GetBudget("2024-01")
+	for _, row := range resp.Categories {
+		if row.CategoryID == category.ID {
+			// available = 20000, shortfall = 120000-20000 = 100000
+			// months remaining = 3, monthly needed = ceil(100000/3) = 33334
+			// underfunded = 33334 - 20000 = 13334
+			if *row.Underfunded != 13334 {
+				t.Errorf("expected underfunded 13334, got %d", *row.Underfunded)
+			}
+		}
+	}
+}
+
+func TestBudgetService_GetBudget_SavingsBalanceAlreadyMet(t *testing.T) {
+	svc, account, category := setupBudgetTest(t)
+
+	svc.db.Create(&models.Transaction{
+		AccountID: account.ID, Amount: 500000, Description: "Salary",
+		Date: "2024-01-15", Type: "income",
+	})
+
+	date := "2024-06"
+	svc.SetCategoryTarget(category.ID, "2024-01", "savings_balance", 10000, &date)
+
+	// Assign more than target
+	svc.AllocateBudget("2024-01", category.ID, 15000)
+	resp, _ := svc.GetBudget("2024-01")
+	for _, row := range resp.Categories {
+		if row.CategoryID == category.ID {
+			if *row.Underfunded != 0 {
+				t.Errorf("expected underfunded 0 when target met, got %d", *row.Underfunded)
+			}
+		}
+	}
+}
+
+func TestBudgetService_GetBudget_NoTarget(t *testing.T) {
+	svc, account, category := setupBudgetTest(t)
+
+	svc.db.Create(&models.Transaction{
+		AccountID: account.ID, Amount: 300000, Description: "Salary",
+		Date: "2024-01-15", Type: "income",
+	})
+
+	resp, _ := svc.GetBudget("2024-01")
+	for _, row := range resp.Categories {
+		if row.CategoryID == category.ID {
+			if row.TargetType != nil {
+				t.Errorf("expected target_type nil, got %v", *row.TargetType)
+			}
+			if row.TargetAmount != nil {
+				t.Errorf("expected target_amount nil, got %v", *row.TargetAmount)
+			}
+			if row.Underfunded != nil {
+				t.Errorf("expected underfunded nil, got %v", *row.Underfunded)
+			}
+		}
+	}
+}
+
+func TestBudgetService_GetBudget_TotalUnderfunded(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	svc := NewBudgetService(db)
+
+	account := models.Account{Name: "Test", Type: "checking"}
+	db.Create(&account)
+
+	cat1 := models.Category{Name: "Food", Colour: "#FF0000"}
+	cat2 := models.Category{Name: "Rent", Colour: "#00FF00"}
+	db.Create(&cat1)
+	db.Create(&cat2)
+
+	db.Create(&models.Transaction{
+		AccountID: account.ID, Amount: 500000, Description: "Salary",
+		Date: "2024-01-15", Type: "income",
+	})
+
+	// cat1: monthly_savings 10000, assigned 3000 → underfunded 7000
+	svc.SetCategoryTarget(cat1.ID, "2024-01", "monthly_savings", 10000, nil)
+	svc.AllocateBudget("2024-01", cat1.ID, 3000)
+
+	// cat2: monthly_savings 5000, assigned 2000 → underfunded 3000
+	svc.SetCategoryTarget(cat2.ID, "2024-01", "monthly_savings", 5000, nil)
+	svc.AllocateBudget("2024-01", cat2.ID, 2000)
+
+	resp, _ := svc.GetBudget("2024-01")
+	if resp.TotalUnderfunded != 10000 {
+		t.Errorf("expected total_underfunded 10000, got %d", resp.TotalUnderfunded)
+	}
+}
+
 func TestBudgetService_AverageRounding(t *testing.T) {
 	svc, account, category := setupBudgetTest(t)
 
