@@ -36,14 +36,29 @@ func CreateTransaction(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	database.DB.Create(&txn)
+	if !validateTxnType(txn.Type) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid transaction type. Must be one of: income, expense"})
+		return
+	}
+	if !validateDate(txn.Date) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format. Must be YYYY-MM-DD"})
+		return
+	}
+	if err := database.DB.Create(&txn).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create transaction"})
+		return
+	}
 	database.DB.Preload("Account").Preload("Category").First(&txn, txn.ID)
 	c.JSON(http.StatusCreated, txn)
 }
 
 func UpdateTransaction(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
 	var txn models.Transaction
-	if err := database.DB.First(&txn, c.Param("id")).Error; err != nil {
+	if err := database.DB.First(&txn, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Transaction not found"})
 		return
 	}
@@ -54,25 +69,54 @@ func UpdateTransaction(c *gin.Context) {
 	}
 
 	updates := map[string]interface{}{
-		"account_id":  input.AccountID,
-		"category_id": input.CategoryID,
-		"amount":      input.Amount,
-		"description": input.Description,
-		"date":        input.Date,
-		"type":        input.Type,
+		"category_id": input.CategoryID, // always included (nullable)
 	}
-	database.DB.Model(&txn).Updates(updates)
+	if input.AccountID != 0 {
+		updates["account_id"] = input.AccountID
+	}
+	if input.Amount != 0 {
+		updates["amount"] = input.Amount
+	}
+	if input.Description != "" {
+		updates["description"] = input.Description
+	}
+	if input.Date != "" {
+		if !validateDate(input.Date) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format. Must be YYYY-MM-DD"})
+			return
+		}
+		updates["date"] = input.Date
+	}
+	if input.Type != "" {
+		if !validateTxnType(input.Type) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid transaction type. Must be one of: income, expense"})
+			return
+		}
+		updates["type"] = input.Type
+	}
+
+	if err := database.DB.Model(&txn).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update transaction"})
+		return
+	}
 	database.DB.Preload("Account").Preload("Category").First(&txn, txn.ID)
 	c.JSON(http.StatusOK, txn)
 }
 
 func DeleteTransaction(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
 	var txn models.Transaction
-	if err := database.DB.First(&txn, c.Param("id")).Error; err != nil {
+	if err := database.DB.First(&txn, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Transaction not found"})
 		return
 	}
-	database.DB.Delete(&txn)
+	if err := database.DB.Delete(&txn).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete transaction"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "Transaction deleted"})
 }
 
@@ -96,6 +140,9 @@ func ImportCSV(c *gin.Context) {
 		return
 	}
 
-	database.DB.Create(&transactions)
+	if err := database.DB.Create(&transactions).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to import transactions"})
+		return
+	}
 	c.JSON(http.StatusCreated, gin.H{"imported": len(transactions), "transactions": transactions})
 }

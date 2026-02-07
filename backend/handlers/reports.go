@@ -28,7 +28,6 @@ func ReportByCategory(c *gin.Context) {
 	query := database.DB.Table("transactions").
 		Select("transactions.category_id, categories.name as category_name, categories.colour, SUM(transactions.amount) as total, COUNT(*) as count").
 		Joins("LEFT JOIN categories ON categories.id = transactions.category_id").
-		Where("transactions.deleted_at IS NULL").
 		Group("transactions.category_id")
 
 	if dateFrom := c.Query("date_from"); dateFrom != "" {
@@ -50,7 +49,6 @@ func ReportByAccount(c *gin.Context) {
 	query := database.DB.Table("transactions").
 		Select("transactions.account_id, accounts.name as account_name, accounts.type as account_type, SUM(transactions.amount) as total, COUNT(*) as count").
 		Joins("LEFT JOIN accounts ON accounts.id = transactions.account_id").
-		Where("transactions.deleted_at IS NULL").
 		Group("transactions.account_id")
 
 	if dateFrom := c.Query("date_from"); dateFrom != "" {

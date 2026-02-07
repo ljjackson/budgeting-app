@@ -33,7 +33,7 @@ export default function TransactionTable({ transactions, categories, onEdit, onD
               <td className="px-4 py-3">{txn.date}</td>
               <td className="px-4 py-3">{txn.description}</td>
               <td className={`px-4 py-3 font-medium ${txn.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                {txn.type === 'income' ? '+' : '-'}${formatAmount(txn.amount)}
+                {txn.type === 'income' ? '+' : '-'}£{formatAmount(txn.amount)}
               </td>
               <td className="px-4 py-3">
                 <span className={`px-2 py-1 rounded text-xs ${txn.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>

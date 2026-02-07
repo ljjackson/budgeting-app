@@ -20,13 +20,24 @@ func CreateCategory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	database.DB.Create(&category)
+	if !validateColour(category.Colour) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid colour. Must be a hex colour like #FF5733"})
+		return
+	}
+	if err := database.DB.Create(&category).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create category"})
+		return
+	}
 	c.JSON(http.StatusCreated, category)
 }
 
 func UpdateCategory(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
 	var category models.Category
-	if err := database.DB.First(&category, c.Param("id")).Error; err != nil {
+	if err := database.DB.First(&category, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
 		return
 	}
@@ -35,18 +46,30 @@ func UpdateCategory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	database.DB.Model(&category).Updates(models.Account{Name: input.Name})
-	category.Colour = input.Colour
-	database.DB.Save(&category)
+	if !validateColour(input.Colour) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid colour. Must be a hex colour like #FF5733"})
+		return
+	}
+	if err := database.DB.Model(&category).Updates(models.Category{Name: input.Name, Colour: input.Colour}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update category"})
+		return
+	}
 	c.JSON(http.StatusOK, category)
 }
 
 func DeleteCategory(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
 	var category models.Category
-	if err := database.DB.First(&category, c.Param("id")).Error; err != nil {
+	if err := database.DB.First(&category, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
 		return
 	}
-	database.DB.Delete(&category)
+	if err := database.DB.Delete(&category).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete category"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "Category deleted"})
 }

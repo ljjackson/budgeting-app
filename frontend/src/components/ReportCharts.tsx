@@ -6,7 +6,7 @@ const DEFAULT_COLOURS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', 
 const formatDollar = (v: number | string | undefined) => {
   if (v === undefined) return '';
   const n = typeof v === 'string' ? parseFloat(v) : v;
-  return `$${n.toFixed(2)}`;
+  return `£${n.toFixed(2)}`;
 };
 
 interface CategoryChartProps {
@@ -31,7 +31,7 @@ export function CategoryChart({ data }: CategoryChartProps) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}`} />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `£${v}`} />
                 <Tooltip formatter={formatDollar} />
                 <Bar dataKey="value">
                   {chartData.map((entry, i) => (
@@ -81,7 +81,7 @@ export function AccountChart({ data }: AccountChartProps) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
               <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}`} />
+              <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `£${v}`} />
               <Tooltip formatter={formatDollar} />
               <Bar dataKey="value">
                 {chartData.map((entry, i) => (
