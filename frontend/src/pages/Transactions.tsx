@@ -111,6 +111,7 @@ export default function Transactions() {
             </DialogDescription>
           </DialogHeader>
           <TransactionForm
+            key={editing?.id ?? 'new'}
             transaction={editing}
             accounts={accounts}
             categories={categories}

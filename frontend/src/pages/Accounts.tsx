@@ -52,6 +52,7 @@ export default function Accounts() {
             </DialogDescription>
           </DialogHeader>
           <AccountForm
+            key={editing?.id ?? 'new'}
             account={editing}
             onSubmit={handleSubmit}
             onCancel={() => { setShowForm(false); setEditing(null); }}

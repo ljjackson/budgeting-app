@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Category } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,15 +11,8 @@ interface Props {
 }
 
 export default function CategoryForm({ category, onSubmit, onCancel }: Props) {
-  const [name, setName] = useState('');
-  const [colour, setColour] = useState('#3B82F6');
-
-  useEffect(() => {
-    if (category) {
-      setName(category.name);
-      setColour(category.colour);
-    }
-  }, [category]);
+  const [name, setName] = useState(category?.name ?? '');
+  const [colour, setColour] = useState(category?.colour ?? '#3B82F6');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

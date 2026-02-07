@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Account, CreateAccountRequest } from '@/api/client';
 import { parseCurrency } from '@/utils/currency';
 import { Button } from '@/components/ui/button';
@@ -17,16 +17,9 @@ interface Props {
 const ACCOUNT_TYPES = ['checking', 'savings', 'credit', 'cash'];
 
 export default function AccountForm({ account, onSubmit, onCancel }: Props) {
-  const [name, setName] = useState('');
-  const [type, setType] = useState('checking');
+  const [name, setName] = useState(account?.name ?? '');
+  const [type, setType] = useState(account?.type ?? 'checking');
   const [startingBalance, setStartingBalance] = useState('');
-
-  useEffect(() => {
-    if (account) {
-      setName(account.name);
-      setType(account.type);
-    }
-  }, [account]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

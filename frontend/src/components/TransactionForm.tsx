@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Account, Category, Transaction } from '@/api/client';
 import { parseCurrency, centsToDecimal } from '@/utils/currency';
 import { Button } from '@/components/ui/button';
@@ -24,25 +24,12 @@ interface Props {
 }
 
 export default function TransactionForm({ transaction, accounts, categories, onSubmit, onCancel }: Props) {
-  const [accountId, setAccountId] = useState<number>(0);
-  const [categoryId, setCategoryId] = useState<number | ''>('');
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [type, setType] = useState('expense');
-
-  useEffect(() => {
-    if (transaction) {
-      setAccountId(transaction.account_id);
-      setCategoryId(transaction.category_id ?? '');
-      setAmount(centsToDecimal(transaction.amount));
-      setDescription(transaction.description);
-      setDate(transaction.date);
-      setType(transaction.type);
-    } else if (accounts.length > 0 && accountId === 0) {
-      setAccountId(accounts[0].id);
-    }
-  }, [transaction, accounts]);
+  const [accountId, setAccountId] = useState<number>(transaction?.account_id ?? accounts[0]?.id ?? 0);
+  const [categoryId, setCategoryId] = useState<number | ''>(transaction?.category_id ?? '');
+  const [amount, setAmount] = useState(transaction ? centsToDecimal(transaction.amount) : '');
+  const [description, setDescription] = useState(transaction?.description ?? '');
+  const [date, setDate] = useState(transaction?.date ?? new Date().toISOString().slice(0, 10));
+  const [type, setType] = useState(transaction?.type ?? 'expense');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

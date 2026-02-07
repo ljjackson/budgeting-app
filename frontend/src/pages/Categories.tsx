@@ -51,6 +51,7 @@ export default function Categories() {
             </DialogDescription>
           </DialogHeader>
           <CategoryForm
+            key={editing?.id ?? 'new'}
             category={editing}
             onSubmit={handleSubmit}
             onCancel={() => { setShowForm(false); setEditing(null); }}
