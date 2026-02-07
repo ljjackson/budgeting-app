@@ -1,0 +1,19 @@
+# Build output
+dist/
+
+# Database
+*.db
+
+# Dependencies
+node_modules/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# Editor
+.vscode/
+.idea/
+*.sw?
