@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
 import type { BudgetCategoryRow } from '@/api/client';
+import { useState } from 'react';
 import { useBudget, useAllocateBudget } from '@/hooks/useBudget';
+import { useMonthNavigator } from '@/hooks/useMonthNavigator';
+import { useInlineEdit } from '@/hooks/useInlineEdit';
 import { formatCurrency, centsToDecimal, resolveAssignedInput } from '@/utils/currency';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,86 +11,56 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import MonthNavigator from '@/components/MonthNavigator';
 import CategoryDetailPanel from '@/components/CategoryDetailPanel';
 
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
 export default function Budget() {
-  const now = new Date();
-  const [currentYear, setCurrentYear] = useState(now.getFullYear());
-  const [currentMonth, setCurrentMonth] = useState(now.getMonth());
-
-  const monthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
-  const { data: budget, isLoading } = useBudget(monthStr);
+  const { currentYear, currentMonth, monthStr, prevMonth, nextMonth } = useMonthNavigator();
+  const { data: budget, isLoading, isError, error } = useBudget(monthStr);
   const allocateMutation = useAllocateBudget();
 
   const [selectedCategory, setSelectedCategory] = useState<BudgetCategoryRow | null>(null);
-  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (editingCategoryId !== null) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }
-  }, [editingCategoryId]);
+  const inlineEdit = useInlineEdit<number>({
+    onCommit: (categoryId, value) => {
+      const current = budget?.categories.find(c => c.category_id === categoryId)?.assigned ?? 0;
+      const amount = resolveAssignedInput(value, current);
+      allocateMutation.mutate({ month: monthStr, category_id: categoryId, amount });
+    },
+  });
 
-  const prevMonth = () => {
+  const handlePrevMonth = () => {
     setSelectedCategory(null);
-    if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(currentYear - 1); }
-    else { setCurrentMonth(currentMonth - 1); }
+    prevMonth();
   };
 
-  const nextMonth = () => {
+  const handleNextMonth = () => {
     setSelectedCategory(null);
-    if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(currentYear + 1); }
-    else { setCurrentMonth(currentMonth + 1); }
+    nextMonth();
   };
 
-  const startEditing = (categoryId: number, currentAssigned: number) => {
-    setEditingCategoryId(categoryId);
-    setEditValue(centsToDecimal(currentAssigned));
-  };
-
-  const commitEdit = () => {
-    if (editingCategoryId === null) return;
-    const current = budget?.categories.find(c => c.category_id === editingCategoryId)?.assigned ?? 0;
-    const amount = resolveAssignedInput(editValue, current);
-    allocateMutation.mutate({
-      month: monthStr,
-      category_id: editingCategoryId,
-      amount,
-    });
-    setEditingCategoryId(null);
-  };
-
-  const cancelEdit = () => {
-    setEditingCategoryId(null);
-  };
+  if (isError) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold mb-4">Budget</h1>
+        <p className="text-destructive">Failed to load budget: {error?.message}</p>
+      </div>
+    );
+  }
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4">Budget</h1>
 
-      {/* Month navigator */}
-      <div className="flex items-center justify-center gap-2 mb-4">
-        <Button variant="outline" size="icon-sm" onClick={prevMonth}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <span className="w-48 text-center font-medium">
-          {MONTH_NAMES[currentMonth]} {currentYear}
-        </span>
-        <Button variant="outline" size="icon-sm" onClick={nextMonth}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
+      <MonthNavigator
+        currentMonth={currentMonth}
+        currentYear={currentYear}
+        onPrev={handlePrevMonth}
+        onNext={handleNextMonth}
+      />
 
       {/* Summary card */}
       <Card className="mb-4">
@@ -153,38 +125,42 @@ export default function Budget() {
           ))}
           {!isLoading && budget?.categories.map((row) => (
             <TableRow key={row.category_id}>
-              <TableCell
-                className="cursor-pointer"
-                onClick={() => setSelectedCategory(row)}
-              >
-                <div className="flex items-center gap-2">
+              <TableCell>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full text-left cursor-pointer"
+                  onClick={() => setSelectedCategory(row)}
+                >
                   <span
                     className="inline-block w-3 h-3 rounded-full shrink-0"
                     style={{ backgroundColor: row.colour }}
                   />
                   {row.category_name}
-                </div>
+                </button>
               </TableCell>
-              <TableCell
-                className="cursor-pointer"
-                onClick={() => startEditing(row.category_id, row.assigned)}
-              >
-                {editingCategoryId === row.category_id ? (
-                  <Input
-                    ref={inputRef}
-                    type="text"
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') commitEdit();
-                      if (e.key === 'Escape') cancelEdit();
-                    }}
-                    onBlur={commitEdit}
-                    className="h-7 w-24 text-sm"
-                  />
-                ) : (
-                  formatCurrency(row.assigned)
-                )}
+              <TableCell>
+                <button
+                  type="button"
+                  className="cursor-pointer w-full text-left"
+                  onClick={() => inlineEdit.startEditing(row.category_id, centsToDecimal(row.assigned))}
+                >
+                  {inlineEdit.editingId === row.category_id ? (
+                    <Input
+                      ref={inlineEdit.inputRef}
+                      type="text"
+                      value={inlineEdit.editValue}
+                      onChange={(e) => inlineEdit.setEditValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') inlineEdit.commitEdit();
+                        if (e.key === 'Escape') inlineEdit.cancelEdit();
+                      }}
+                      onBlur={inlineEdit.commitEdit}
+                      className="h-7 w-24 text-sm"
+                    />
+                  ) : (
+                    formatCurrency(row.assigned)
+                  )}
+                </button>
               </TableCell>
               <TableCell>{formatCurrency(row.activity)}</TableCell>
               <TableCell className={cn(
@@ -192,8 +168,9 @@ export default function Budget() {
                 row.available >= 0 ? 'text-green-600' : 'text-red-600'
               )}>
                 {row.available < 0 ? (
-                  <button
-                    className="cursor-pointer underline decoration-dotted hover:decoration-solid"
+                  <Button
+                    variant="link"
+                    className="p-0 h-auto font-medium text-red-600 underline decoration-dotted hover:decoration-solid"
                     title={`Quick-assign ${formatCurrency(Math.abs(row.available))} to cover shortfall`}
                     onClick={() => {
                       allocateMutation.mutate({
@@ -204,7 +181,7 @@ export default function Budget() {
                     }}
                   >
                     {formatCurrency(row.available)}
-                  </button>
+                  </Button>
                 ) : (
                   formatCurrency(row.available)
                 )}

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 
 export default function Accounts() {
-  const { data: accounts = [] } = useAccounts();
+  const { data: accounts = [], isError, error } = useAccounts();
   const createMutation = useCreateAccount();
   const updateMutation = useUpdateAccount();
   const deleteMutation = useDeleteAccount();
@@ -38,6 +38,15 @@ export default function Accounts() {
       }
     }
   };
+
+  if (isError) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold mb-4">Accounts</h1>
+        <p className="text-destructive">Failed to load accounts: {error?.message}</p>
+      </div>
+    );
+  }
 
   return (
     <div>

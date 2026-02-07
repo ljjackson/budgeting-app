@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Account, Category, Transaction } from '@/api/client';
+import type { Account, Category, Transaction, TransactionType } from '@/api/client';
 import { parseCurrency, centsToDecimal } from '@/utils/currency';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ interface Props {
     amount: number;
     description: string;
     date: string;
-    type: string;
+    type: TransactionType;
   }) => void;
   onCancel: () => void;
 }
@@ -29,7 +29,7 @@ export default function TransactionForm({ transaction, accounts, categories, onS
   const [amount, setAmount] = useState(transaction ? centsToDecimal(transaction.amount) : '');
   const [description, setDescription] = useState(transaction?.description ?? '');
   const [date, setDate] = useState(transaction?.date ?? new Date().toISOString().slice(0, 10));
-  const [type, setType] = useState(transaction?.type ?? 'expense');
+  const [type, setType] = useState<TransactionType>(transaction?.type ?? 'expense');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +58,7 @@ export default function TransactionForm({ transaction, accounts, categories, onS
         </div>
         <div className="space-y-1">
           <Label>Type</Label>
-          <Select value={type} onValueChange={setType}>
+          <Select value={type} onValueChange={(v) => setType(v as TransactionType)}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>

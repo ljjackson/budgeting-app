@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Account, CreateAccountRequest } from '@/api/client';
+import type { Account, AccountType, CreateAccountRequest } from '@/api/client';
 import { parseCurrency } from '@/utils/currency';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,7 +43,7 @@ export default function AccountForm({ account, onSubmit, onCancel }: Props) {
       </div>
       <div className="space-y-1">
         <Label>Type</Label>
-        <Select value={type} onValueChange={setType}>
+        <Select value={type} onValueChange={(v) => setType(v as AccountType)}>
           <SelectTrigger className="w-full">
             <SelectValue />
           </SelectTrigger>

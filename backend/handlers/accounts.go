@@ -1,129 +1,94 @@
 package handlers
 
 import (
-	"budgetting-app/backend/database"
-	"budgetting-app/backend/models"
+	"budgetting-app/backend/services"
+	"errors"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-type CreateAccountInput struct {
-	Name            string `json:"name" binding:"required"`
-	Type            string `json:"type" binding:"required"`
-	StartingBalance *int64 `json:"starting_balance"`
+type AccountHandler struct {
+	service *services.AccountService
 }
 
-type AccountResponse struct {
-	models.Account
-	HasTransactions bool `json:"has_transactions"`
+func NewAccountHandler(svc *services.AccountService) *AccountHandler {
+	return &AccountHandler{service: svc}
 }
 
-func ListAccounts(c *gin.Context) {
-	accounts := []models.Account{}
-	database.DB.Order("name").Find(&accounts)
-
-	results := make([]AccountResponse, len(accounts))
-	for i, a := range accounts {
-		var exists bool
-		// TODO Batch the query, we don't want to do an N+1.
-		database.DB.Raw("SELECT EXISTS(SELECT 1 FROM transactions WHERE account_id = ?)", a.ID).Scan(&exists)
-		results[i] = AccountResponse{Account: a, HasTransactions: exists}
+func (h *AccountHandler) List(c *gin.Context) {
+	results, err := h.service.List()
+	if err != nil {
+		respondServerError(c, err, "Failed to list accounts")
+		return
 	}
 	c.JSON(http.StatusOK, results)
 }
 
-func CreateAccount(c *gin.Context) {
-	var input CreateAccountInput
+func (h *AccountHandler) Create(c *gin.Context) {
+	var input services.CreateAccountInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 	if !validateAccountType(input.Type) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account type. Must be one of: checking, savings, credit, cash"})
+		respondError(c, http.StatusBadRequest, "Invalid account type. Must be one of: checking, savings, credit, cash")
 		return
 	}
-	account := models.Account{Name: input.Name, Type: input.Type}
-
-	// Should this live in a separate service / repository? This has gone beyond just creating an account now.
-	err := database.DB.Transaction(func(db *gorm.DB) error {
-		if err := db.Create(&account).Error; err != nil {
-			return err
-		}
-		if input.StartingBalance != nil && *input.StartingBalance != 0 {
-			amount := *input.StartingBalance
-			txType := "income"
-			if amount < 0 {
-				amount = -amount
-				txType = "expense"
-			}
-			tx := models.Transaction{
-				AccountID:   account.ID,
-				Amount:      amount,
-				Type:        txType,
-				Description: "Starting balance",
-				// Should we have a default NOW() for dates across the board?	
-				Date:        time.Now().Format("2006-01-02"),
-			}
-			if err := db.Create(&tx).Error; err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	account, err := h.service.Create(input)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create account"})
+		respondServerError(c, err, "Failed to create account")
 		return
 	}
 	c.JSON(http.StatusCreated, account)
 }
 
-func UpdateAccount(c *gin.Context) {
+func (h *AccountHandler) Update(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
 		return
 	}
-	var account models.Account
-	if err := database.DB.First(&account, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
-		return
+	var input struct {
+		Name string `json:"name" binding:"required"`
+		Type string `json:"type" binding:"required"`
 	}
-	var input models.Account
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 	if !validateAccountType(input.Type) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account type. Must be one of: checking, savings, credit, cash"})
+		respondError(c, http.StatusBadRequest, "Invalid account type. Must be one of: checking, savings, credit, cash")
 		return
 	}
-	if err := database.DB.Model(&account).Updates(models.Account{Name: input.Name, Type: input.Type}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update account"})
+	account, err := h.service.Update(id, input.Name, input.Type)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			respondError(c, http.StatusNotFound, "Account not found")
+			return
+		}
+		respondServerError(c, err, "Failed to update account")
 		return
 	}
 	c.JSON(http.StatusOK, account)
 }
 
-func DeleteAccount(c *gin.Context) {
+func (h *AccountHandler) Delete(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
 		return
 	}
-	var account models.Account
-	if err := database.DB.First(&account, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
-		return
-	}
-	var count int64
-	database.DB.Model(&models.Transaction{}).Where("account_id = ?", account.ID).Count(&count)
-	if count > 0 {
-		c.JSON(http.StatusConflict, gin.H{"error": "Cannot delete account with transactions"})
-		return
-	}
-	if err := database.DB.Delete(&account).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete account"})
+	err := h.service.Delete(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			respondError(c, http.StatusNotFound, "Account not found")
+			return
+		}
+		if err.Error() == "cannot delete account with transactions" {
+			respondError(c, http.StatusConflict, "Cannot delete account with transactions")
+			return
+		}
+		respondServerError(c, err, "Failed to delete account")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Account deleted"})

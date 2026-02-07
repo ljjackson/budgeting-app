@@ -8,6 +8,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ParseCSV parses a CSV file and returns transactions.
@@ -66,12 +67,26 @@ func ParseCSV(reader io.Reader, accountID string) ([]models.Transaction, error) 
 		}
 		amountCents := int64(math.Round(amountFloat * 100))
 
+		// Validate date format
+		dateStr := strings.TrimSpace(record[dateIdx])
+		if _, err := time.Parse("2006-01-02", dateStr); err != nil {
+			return nil, fmt.Errorf("invalid date on line %d: %s (expected YYYY-MM-DD)", lineNum, dateStr)
+		}
+
+		// Validate and cap description
+		desc := strings.TrimSpace(record[descIdx])
+		if len(desc) > 500 {
+			desc = desc[:500]
+		}
+
+		// Determine type
 		txnType := "expense"
 		if typeOK && typeIdx < len(record) {
 			t := strings.ToLower(strings.TrimSpace(record[typeIdx]))
-			if t == "income" || t == "expense" {
-				txnType = t
+			if t != "income" && t != "expense" {
+				return nil, fmt.Errorf("invalid type on line %d: %s (must be income or expense)", lineNum, t)
 			}
+			txnType = t
 		} else if amountCents > 0 {
 			txnType = "income"
 		}
@@ -83,8 +98,8 @@ func ParseCSV(reader io.Reader, accountID string) ([]models.Transaction, error) 
 		txn := models.Transaction{
 			AccountID:   uint(accID),
 			Amount:      amountCents,
-			Description: strings.TrimSpace(record[descIdx]),
-			Date:        strings.TrimSpace(record[dateIdx]),
+			Description: desc,
+			Date:        dateStr,
 			Type:        txnType,
 		}
 		transactions = append(transactions, txn)

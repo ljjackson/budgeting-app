@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import type { Transaction } from '@/api/client';
+import type { Transaction, TransactionType } from '@/api/client';
 import type { SelectionState } from '@/components/TransactionTable';
+import { SENTINEL_NONE, SENTINEL_ALL } from '@/constants';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useCategories } from '@/hooks/useCategories';
+import { useMonthNavigator } from '@/hooks/useMonthNavigator';
 import {
   useTransactionList, useCreateTransaction, useUpdateTransaction, useDeleteTransaction,
   useBulkUpdateCategory,
@@ -10,6 +12,7 @@ import {
 import TransactionForm from '@/components/TransactionForm';
 import TransactionTable from '@/components/TransactionTable';
 import CsvImport from '@/components/CsvImport';
+import MonthNavigator from '@/components/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,12 +23,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
+import { X } from 'lucide-react';
 
 const EMPTY_SELECTION: SelectionState = { mode: 'none', ids: new Set() };
 
@@ -37,10 +35,7 @@ export default function Transactions() {
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
 
-  // Month navigator
-  const now = new Date();
-  const [currentYear, setCurrentYear] = useState(now.getFullYear());
-  const [currentMonth, setCurrentMonth] = useState(now.getMonth());
+  const { currentYear, currentMonth, dateRange, prevMonth, nextMonth } = useMonthNavigator();
 
   // Filters
   const [filterAccount, setFilterAccount] = useState('');
@@ -49,45 +44,29 @@ export default function Transactions() {
 
   // Selection
   const [selection, setSelection] = useState<SelectionState>(EMPTY_SELECTION);
-  const [bulkCategoryId, setBulkCategoryId] = useState<string>('__none__');
+  const [bulkCategoryId, setBulkCategoryId] = useState<string>(SENTINEL_NONE);
 
   // Clear selection when filters or month change
   useEffect(() => {
     setSelection(EMPTY_SELECTION);
   }, [currentYear, currentMonth, filterAccount, filterCategory, search]);
 
-  const prevMonth = () => {
-    if (currentMonth === 0) {
-      setCurrentMonth(11);
-      setCurrentYear(currentYear - 1);
-    } else {
-      setCurrentMonth(currentMonth - 1);
-    }
-  };
-
-  const nextMonth = () => {
-    if (currentMonth === 11) {
-      setCurrentMonth(0);
-      setCurrentYear(currentYear + 1);
-    } else {
-      setCurrentMonth(currentMonth + 1);
-    }
-  };
-
   const filters = useMemo(() => {
-    const dateFrom = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`;
-    const lastDay = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const dateTo = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-    const params: Record<string, string> = { date_from: dateFrom, date_to: dateTo };
+    const params: Record<string, string> = {
+      date_from: dateRange.dateFrom,
+      date_to: dateRange.dateTo,
+    };
     if (filterAccount) params.account_id = filterAccount;
     if (filterCategory) params.category_id = filterCategory;
     if (search) params.search = search;
     return params;
-  }, [currentYear, currentMonth, filterAccount, filterCategory, search]);
+  }, [dateRange, filterAccount, filterCategory, search]);
 
   const {
     data,
     isLoading,
+    isError,
+    error,
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
@@ -109,7 +88,7 @@ export default function Transactions() {
     amount: number;
     description: string;
     date: string;
-    type: string;
+    type: TransactionType;
   }) => {
     if (editing) {
       await updateMutation.mutateAsync({ id: editing.id, data: txnData });
@@ -145,14 +124,23 @@ export default function Transactions() {
     : 0;
 
   const handleBulkAssign = async () => {
-    const categoryId = bulkCategoryId === '__none__' ? null : Number(bulkCategoryId);
+    const categoryId = bulkCategoryId === SENTINEL_NONE ? null : Number(bulkCategoryId);
     const ids = selection.mode === 'all'
       ? transactions.map((t) => t.id)
       : Array.from(selection.ids);
     await bulkMutation.mutateAsync({ transactionIds: ids, categoryId });
     setSelection(EMPTY_SELECTION);
-    setBulkCategoryId('__none__');
+    setBulkCategoryId(SENTINEL_NONE);
   };
+
+  if (isError) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold mb-4">Transactions</h1>
+        <p className="text-destructive">Failed to load transactions: {error?.message}</p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -168,18 +156,12 @@ export default function Transactions() {
         </div>
       </div>
 
-      {/* Month navigator */}
-      <div className="flex items-center justify-center gap-2 mb-4">
-        <Button variant="outline" size="icon-sm" onClick={prevMonth}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <span className="w-48 text-center font-medium">
-          {MONTH_NAMES[currentMonth]} {currentYear}
-        </span>
-        <Button variant="outline" size="icon-sm" onClick={nextMonth}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
+      <MonthNavigator
+        currentMonth={currentMonth}
+        currentYear={currentYear}
+        onPrev={prevMonth}
+        onNext={nextMonth}
+      />
 
       <Dialog open={showImport} onOpenChange={setShowImport}>
         <DialogContent>
@@ -216,14 +198,14 @@ export default function Transactions() {
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Account</Label>
             <Select
-              value={filterAccount || '__all__'}
-              onValueChange={(v) => setFilterAccount(v === '__all__' ? '' : v)}
+              value={filterAccount || SENTINEL_ALL}
+              onValueChange={(v) => setFilterAccount(v === SENTINEL_ALL ? '' : v)}
             >
               <SelectTrigger size="sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all__">All</SelectItem>
+                <SelectItem value={SENTINEL_ALL}>All</SelectItem>
                 {accounts.map((a) => (
                   <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
                 ))}
@@ -233,14 +215,14 @@ export default function Transactions() {
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Category</Label>
             <Select
-              value={filterCategory || '__all__'}
-              onValueChange={(v) => setFilterCategory(v === '__all__' ? '' : v)}
+              value={filterCategory || SENTINEL_ALL}
+              onValueChange={(v) => setFilterCategory(v === SENTINEL_ALL ? '' : v)}
             >
               <SelectTrigger size="sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all__">All</SelectItem>
+                <SelectItem value={SENTINEL_ALL}>All</SelectItem>
                 <SelectItem value="none">Uncategorized</SelectItem>
                 {categories.map((c) => (
                   <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
@@ -290,7 +272,7 @@ export default function Transactions() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">Uncategorized</SelectItem>
+                <SelectItem value={SENTINEL_NONE}>Uncategorized</SelectItem>
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
                 ))}

@@ -83,3 +83,42 @@ func TestParseCSV_InvalidAccountID(t *testing.T) {
 		t.Fatal("expected error for invalid account_id")
 	}
 }
+
+func TestParseCSV_InvalidDate(t *testing.T) {
+	csv := `date,description,amount
+15/01/2024,Test,10.00`
+
+	_, err := ParseCSV(strings.NewReader(csv), "1")
+	if err == nil {
+		t.Fatal("expected error for invalid date format")
+	}
+	if !strings.Contains(err.Error(), "invalid date") {
+		t.Errorf("expected 'invalid date' in error, got: %s", err.Error())
+	}
+}
+
+func TestParseCSV_InvalidType(t *testing.T) {
+	csv := `date,description,amount,type
+2024-01-15,Test,10.00,debit`
+
+	_, err := ParseCSV(strings.NewReader(csv), "1")
+	if err == nil {
+		t.Fatal("expected error for invalid type")
+	}
+	if !strings.Contains(err.Error(), "invalid type") {
+		t.Errorf("expected 'invalid type' in error, got: %s", err.Error())
+	}
+}
+
+func TestParseCSV_DescriptionCap(t *testing.T) {
+	longDesc := strings.Repeat("a", 600)
+	csv := "date,description,amount\n2024-01-15," + longDesc + ",10.00"
+
+	txns, err := ParseCSV(strings.NewReader(csv), "1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(txns[0].Description) != 500 {
+		t.Errorf("expected description capped at 500 chars, got %d", len(txns[0].Description))
+	}
+}

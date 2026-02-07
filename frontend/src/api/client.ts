@@ -1,6 +1,6 @@
-const BASE_URL = 'http://localhost:8080/api';
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api';
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+async function requestRaw(path: string, options?: RequestInit): Promise<Response> {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
@@ -9,15 +9,23 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || res.statusText);
   }
+  return res;
+}
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await requestRaw(path, options);
   return res.json();
 }
 
 // Types
 
+export type AccountType = 'checking' | 'savings' | 'credit' | 'cash';
+export type TransactionType = 'income' | 'expense';
+
 export interface Account {
   id: number;
   name: string;
-  type: string;
+  type: AccountType;
   has_transactions: boolean;
   created_at: string;
   updated_at: string;
@@ -38,7 +46,7 @@ export interface Transaction {
   amount: number; // cents
   description: string;
   date: string;
-  type: string;
+  type: TransactionType;
   account?: Account;
   category?: Category | null;
   created_at: string;
@@ -65,7 +73,7 @@ export interface AccountReport {
 
 export interface CreateAccountRequest {
   name: string;
-  type: string;
+  type: AccountType;
   starting_balance?: number;
 }
 
@@ -96,14 +104,7 @@ export interface PaginatedTransactions {
 
 export const getTransactions = async (params?: Record<string, string>, signal?: AbortSignal): Promise<PaginatedTransactions> => {
   const query = params ? '?' + new URLSearchParams(params).toString() : '';
-  const res = await fetch(`${BASE_URL}/transactions${query}`, {
-    headers: { 'Content-Type': 'application/json' },
-    signal,
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || res.statusText);
-  }
+  const res = await requestRaw(`/transactions${query}`, { signal });
   const total = Number(res.headers.get('X-Total-Count') ?? '0');
   const data = await res.json();
   return { data, total };

@@ -116,12 +116,13 @@ export default function CategoryDetailPanel({
                   className="h-7 w-24 text-sm text-right"
                 />
               ) : (
-                <span
+                <button
+                  type="button"
                   className="text-sm font-medium cursor-pointer hover:underline"
                   onClick={startEditing}
                 >
                   {formatCurrency(category.assigned)}
-                </span>
+                </button>
               )}
             </div>
             <div className="flex items-center justify-between">

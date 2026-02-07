@@ -1,20 +1,42 @@
 package main
 
 import (
+	"budgetting-app/backend/config"
 	"budgetting-app/backend/database"
 	"budgetting-app/backend/handlers"
+	"budgetting-app/backend/services"
+	"log"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	database.Connect()
+	cfg := config.Load()
+
+	db, err := database.Connect(cfg.DBPath)
+	if err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+
+	// Services
+	accountSvc := services.NewAccountService(db)
+	categorySvc := services.NewCategoryService(db)
+	transactionSvc := services.NewTransactionService(db)
+	budgetSvc := services.NewBudgetService(db)
+	reportSvc := services.NewReportService(db)
+
+	// Handlers
+	accountH := handlers.NewAccountHandler(accountSvc)
+	categoryH := handlers.NewCategoryHandler(categorySvc)
+	transactionH := handlers.NewTransactionHandler(transactionSvc)
+	budgetH := handlers.NewBudgetHandler(budgetSvc)
+	reportH := handlers.NewReportHandler(reportSvc)
 
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowOrigins:     cfg.CORSOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
 		ExposeHeaders:    []string{"X-Total-Count"},
@@ -23,30 +45,30 @@ func main() {
 
 	api := r.Group("/api")
 	{
-		api.GET("/accounts", handlers.ListAccounts)
-		api.POST("/accounts", handlers.CreateAccount)
-		api.PUT("/accounts/:id", handlers.UpdateAccount)
-		api.DELETE("/accounts/:id", handlers.DeleteAccount)
+		api.GET("/accounts", accountH.List)
+		api.POST("/accounts", accountH.Create)
+		api.PUT("/accounts/:id", accountH.Update)
+		api.DELETE("/accounts/:id", accountH.Delete)
 
-		api.GET("/categories", handlers.ListCategories)
-		api.POST("/categories", handlers.CreateCategory)
-		api.PUT("/categories/:id", handlers.UpdateCategory)
-		api.DELETE("/categories/:id", handlers.DeleteCategory)
+		api.GET("/categories", categoryH.List)
+		api.POST("/categories", categoryH.Create)
+		api.PUT("/categories/:id", categoryH.Update)
+		api.DELETE("/categories/:id", categoryH.Delete)
 
-		api.GET("/transactions", handlers.ListTransactions)
-		api.POST("/transactions", handlers.CreateTransaction)
-		api.PUT("/transactions/:id", handlers.UpdateTransaction)
-		api.DELETE("/transactions/:id", handlers.DeleteTransaction)
-		api.PUT("/transactions/bulk-category", handlers.BulkUpdateCategory)
-		api.POST("/transactions/import", handlers.ImportCSV)
+		api.GET("/transactions", transactionH.List)
+		api.POST("/transactions", transactionH.Create)
+		api.PUT("/transactions/:id", transactionH.Update)
+		api.DELETE("/transactions/:id", transactionH.Delete)
+		api.PUT("/transactions/bulk-category", transactionH.BulkUpdateCategory)
+		api.POST("/transactions/import", transactionH.ImportCSV)
 
-		api.GET("/reports/by-category", handlers.ReportByCategory)
-		api.GET("/reports/by-account", handlers.ReportByAccount)
+		api.GET("/reports/by-category", reportH.ByCategory)
+		api.GET("/reports/by-account", reportH.ByAccount)
 
-		api.GET("/budget", handlers.GetBudget)
-		api.PUT("/budget/allocate", handlers.AllocateBudget)
-		api.GET("/budget/category-average", handlers.GetCategoryAverage)
+		api.GET("/budget", budgetH.GetBudget)
+		api.PUT("/budget/allocate", budgetH.AllocateBudget)
+		api.GET("/budget/category-average", budgetH.GetCategoryAverage)
 	}
 
-	r.Run(":8080")
+	r.Run(cfg.Port)
 }

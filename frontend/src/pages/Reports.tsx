@@ -21,8 +21,8 @@ export default function Reports() {
     return p;
   }, [dateFrom, dateTo, txnType]);
 
-  const { data: categoryData = [] } = useReportByCategory(params);
-  const { data: accountData = [] } = useReportByAccount(params);
+  const { data: categoryData = [], isError: catError, error: catErr } = useReportByCategory(params);
+  const { data: accountData = [], isError: acctError, error: acctErr } = useReportByAccount(params);
 
   return (
     <div>
@@ -66,6 +66,12 @@ export default function Reports() {
           </div>
         </CardContent>
       </Card>
+
+      {(catError || acctError) && (
+        <p className="text-destructive mb-4">
+          Failed to load reports: {catErr?.message || acctErr?.message}
+        </p>
+      )}
 
       <div className="space-y-4">
         <CategoryChart data={categoryData} />

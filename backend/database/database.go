@@ -2,32 +2,29 @@ package database
 
 import (
 	"budgetting-app/backend/models"
-	"log"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-var DB *gorm.DB
-
-func Connect() {
-	var err error
-	DB, err = gorm.Open(sqlite.Open("budgetting.db"), &gorm.Config{})
+func Connect(dbPath string) (*gorm.DB, error) {
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		return nil, err
 	}
 
-	err = DB.AutoMigrate(&models.Account{}, &models.Category{}, &models.Transaction{}, &models.BudgetAllocation{})
+	err = db.AutoMigrate(&models.Account{}, &models.Category{}, &models.Transaction{}, &models.BudgetAllocation{})
 	if err != nil {
-		log.Fatal("Failed to migrate database:", err)
+		return nil, err
 	}
 
-	seedCategories()
+	seedCategories(db)
+	return db, nil
 }
 
-func seedCategories() {
+func seedCategories(db *gorm.DB) {
 	var count int64
-	DB.Model(&models.Category{}).Count(&count)
+	db.Model(&models.Category{}).Count(&count)
 	if count > 0 {
 		return
 	}
@@ -49,5 +46,5 @@ func seedCategories() {
 		{Name: "General", Colour: "#6B7280"},
 	}
 
-	DB.Create(&defaults)
+	db.Create(&defaults)
 }

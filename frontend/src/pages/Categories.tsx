@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 
 export default function Categories() {
-  const { data: categories = [] } = useCategories();
+  const { data: categories = [], isError, error } = useCategories();
   const createMutation = useCreateCategory();
   const updateMutation = useUpdateCategory();
   const deleteMutation = useDeleteCategory();
@@ -31,6 +31,15 @@ export default function Categories() {
     if (!confirm('Delete this category?')) return;
     await deleteMutation.mutateAsync(id);
   };
+
+  if (isError) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold mb-4">Categories</h1>
+        <p className="text-destructive">Failed to load categories: {error?.message}</p>
+      </div>
+    );
+  }
 
   return (
     <div>
