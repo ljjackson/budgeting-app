@@ -5,6 +5,7 @@ import (
 	"budgetting-app/backend/models"
 	"budgetting-app/backend/services"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,6 +25,24 @@ func ListTransactions(c *gin.Context) {
 	}
 	if dateTo := c.Query("date_to"); dateTo != "" {
 		query = query.Where("date <= ?", dateTo)
+	}
+	if search := c.Query("search"); search != "" {
+		query = query.Where("description LIKE ?", "%"+search+"%")
+	}
+
+	var total int64
+	query.Model(&models.Transaction{}).Count(&total)
+	c.Header("X-Total-Count", strconv.FormatInt(total, 10))
+
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 {
+			query = query.Limit(limit)
+		}
+	}
+	if offsetStr := c.Query("offset"); offsetStr != "" {
+		if offset, err := strconv.Atoi(offsetStr); err == nil && offset > 0 {
+			query = query.Offset(offset)
+		}
 	}
 
 	query.Find(&transactions)
@@ -140,9 +159,16 @@ func ImportCSV(c *gin.Context) {
 		return
 	}
 
-	if err := database.DB.Create(&transactions).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to import transactions"})
-		return
+	batchSize := 100
+	for i := 0; i < len(transactions); i += batchSize {
+		end := i + batchSize
+		if end > len(transactions) {
+			end = len(transactions)
+		}
+		if err := database.DB.Create(transactions[i:end]).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to import transactions"})
+			return
+		}
 	}
-	c.JSON(http.StatusCreated, gin.H{"imported": len(transactions), "transactions": transactions})
+	c.JSON(http.StatusCreated, gin.H{"imported": len(transactions)})
 }

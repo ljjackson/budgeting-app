@@ -88,9 +88,24 @@ export const deleteCategory = (id: number) =>
 
 // Transactions
 
-export const getTransactions = (params?: Record<string, string>) => {
+export interface PaginatedTransactions {
+  data: Transaction[];
+  total: number;
+}
+
+export const getTransactions = async (params?: Record<string, string>, signal?: AbortSignal): Promise<PaginatedTransactions> => {
   const query = params ? '?' + new URLSearchParams(params).toString() : '';
-  return request<Transaction[]>(`/transactions${query}`);
+  const res = await fetch(`${BASE_URL}/transactions${query}`, {
+    headers: { 'Content-Type': 'application/json' },
+    signal,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || res.statusText);
+  }
+  const total = Number(res.headers.get('X-Total-Count') ?? '0');
+  const data = await res.json();
+  return { data, total };
 };
 export const createTransaction = (data: Partial<Transaction>) =>
   request<Transaction>('/transactions', { method: 'POST', body: JSON.stringify(data) });
