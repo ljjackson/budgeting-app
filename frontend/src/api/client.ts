@@ -62,8 +62,14 @@ export interface AccountReport {
 
 // Accounts
 
+export interface CreateAccountRequest {
+  name: string;
+  type: string;
+  starting_balance?: number;
+}
+
 export const getAccounts = () => request<Account[]>('/accounts');
-export const createAccount = (data: Partial<Account>) =>
+export const createAccount = (data: CreateAccountRequest) =>
   request<Account>('/accounts', { method: 'POST', body: JSON.stringify(data) });
 export const updateAccount = (id: number, data: Partial<Account>) =>
   request<Account>(`/accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) });

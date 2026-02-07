@@ -4,9 +4,17 @@ import (
 	"budgetting-app/backend/database"
 	"budgetting-app/backend/models"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
+
+type CreateAccountInput struct {
+	Name            string `json:"name" binding:"required"`
+	Type            string `json:"type" binding:"required"`
+	StartingBalance *int64 `json:"starting_balance"`
+}
 
 func ListAccounts(c *gin.Context) {
 	accounts := []models.Account{}
@@ -15,16 +23,35 @@ func ListAccounts(c *gin.Context) {
 }
 
 func CreateAccount(c *gin.Context) {
-	var account models.Account
-	if err := c.ShouldBindJSON(&account); err != nil {
+	var input CreateAccountInput
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if !validateAccountType(account.Type) {
+	if !validateAccountType(input.Type) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account type. Must be one of: checking, savings, credit, cash"})
 		return
 	}
-	if err := database.DB.Create(&account).Error; err != nil {
+	account := models.Account{Name: input.Name, Type: input.Type}
+	err := database.DB.Transaction(func(db *gorm.DB) error {
+		if err := db.Create(&account).Error; err != nil {
+			return err
+		}
+		if input.StartingBalance != nil && *input.StartingBalance != 0 {
+			tx := models.Transaction{
+				AccountID:   account.ID,
+				Amount:      *input.StartingBalance,
+				Type:        "income",
+				Description: "Starting balance",
+				Date:        time.Now().Format("2006-01-02"),
+			}
+			if err := db.Create(&tx).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create account"})
 		return
 	}

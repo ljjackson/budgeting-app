@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Account, Category, Transaction } from '../api/client';
+import { parseCurrency, centsToDecimal } from '../utils/currency';
 
 interface Props {
   transaction?: Transaction | null;
@@ -28,7 +29,7 @@ export default function TransactionForm({ transaction, accounts, categories, onS
     if (transaction) {
       setAccountId(transaction.account_id);
       setCategoryId(transaction.category_id ?? '');
-      setAmount((transaction.amount / 100).toFixed(2));
+      setAmount(centsToDecimal(transaction.amount));
       setDescription(transaction.description);
       setDate(transaction.date);
       setType(transaction.type);
@@ -39,7 +40,7 @@ export default function TransactionForm({ transaction, accounts, categories, onS
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const cents = Math.round(parseFloat(amount) * 100);
+    const cents = parseCurrency(amount);
     onSubmit({
       account_id: accountId,
       category_id: categoryId === '' ? null : categoryId,

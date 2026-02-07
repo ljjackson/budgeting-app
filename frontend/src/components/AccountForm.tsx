@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import type { Account } from '../api/client';
+import type { Account, CreateAccountRequest } from '../api/client';
+import { parseCurrency } from '../utils/currency';
 
 interface Props {
   account?: Account | null;
-  onSubmit: (data: { name: string; type: string }) => void;
+  onSubmit: (data: CreateAccountRequest) => void;
   onCancel: () => void;
 }
 
@@ -12,6 +13,7 @@ const ACCOUNT_TYPES = ['checking', 'savings', 'credit', 'cash'];
 export default function AccountForm({ account, onSubmit, onCancel }: Props) {
   const [name, setName] = useState('');
   const [type, setType] = useState('checking');
+  const [startingBalance, setStartingBalance] = useState('');
 
   useEffect(() => {
     if (account) {
@@ -22,7 +24,11 @@ export default function AccountForm({ account, onSubmit, onCancel }: Props) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ name, type });
+    const data: CreateAccountRequest = { name, type };
+    if (!account && startingBalance) {
+      data.starting_balance = parseCurrency(startingBalance);
+    }
+    onSubmit(data);
   };
 
   return (
@@ -49,6 +55,20 @@ export default function AccountForm({ account, onSubmit, onCancel }: Props) {
           ))}
         </select>
       </div>
+      {!account && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Starting Balance (£)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={startingBalance}
+            onChange={(e) => setStartingBalance(e.target.value)}
+            placeholder="0.00"
+            className="mt-1 block w-full rounded border-gray-300 border px-3 py-2 text-sm"
+          />
+        </div>
+      )}
       <div className="flex gap-2">
         <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">
           {account ? 'Update' : 'Create'}

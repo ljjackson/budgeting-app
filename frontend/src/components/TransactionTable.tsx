@@ -1,4 +1,6 @@
 import type { Transaction, Category } from '../api/client';
+import { formatCurrency } from '../utils/currency';
+import { formatDate } from '../utils/format';
 
 interface Props {
   transactions: Transaction[];
@@ -9,10 +11,6 @@ interface Props {
 }
 
 export default function TransactionTable({ transactions, categories, onEdit, onDelete, onCategoryChange }: Props) {
-  const formatAmount = (cents: number) => {
-    return (cents / 100).toFixed(2);
-  };
-
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full bg-white rounded shadow">
@@ -21,7 +19,6 @@ export default function TransactionTable({ transactions, categories, onEdit, onD
             <th className="px-4 py-3">Date</th>
             <th className="px-4 py-3">Description</th>
             <th className="px-4 py-3">Amount</th>
-            <th className="px-4 py-3">Type</th>
             <th className="px-4 py-3">Account</th>
             <th className="px-4 py-3">Category</th>
             <th className="px-4 py-3">Actions</th>
@@ -30,15 +27,10 @@ export default function TransactionTable({ transactions, categories, onEdit, onD
         <tbody>
           {transactions.map((txn) => (
             <tr key={txn.id} className="border-t border-gray-100 text-sm">
-              <td className="px-4 py-3">{txn.date}</td>
+              <td className="px-4 py-3">{formatDate(txn.date)}</td>
               <td className="px-4 py-3">{txn.description}</td>
               <td className={`px-4 py-3 font-medium ${txn.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                {txn.type === 'income' ? '+' : '-'}£{formatAmount(txn.amount)}
-              </td>
-              <td className="px-4 py-3">
-                <span className={`px-2 py-1 rounded text-xs ${txn.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  {txn.type}
-                </span>
+                {formatCurrency(txn.amount)}
               </td>
               <td className="px-4 py-3">{txn.account?.name ?? '-'}</td>
               <td className="px-4 py-3">
@@ -63,7 +55,7 @@ export default function TransactionTable({ transactions, categories, onEdit, onD
           ))}
           {transactions.length === 0 && (
             <tr>
-              <td colSpan={7} className="px-4 py-8 text-center text-gray-400">No transactions found</td>
+              <td colSpan={6} className="px-4 py-8 text-center text-gray-400">No transactions found</td>
             </tr>
           )}
         </tbody>
