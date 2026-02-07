@@ -115,6 +115,12 @@ export const updateTransaction = (id: number, data: Partial<Transaction>) =>
 export const deleteTransaction = (id: number) =>
   request<void>(`/transactions/${id}`, { method: 'DELETE' });
 
+export const bulkUpdateCategory = (transactionIds: number[], categoryId: number | null) =>
+  request<{ updated: number }>('/transactions/bulk-category', {
+    method: 'PUT',
+    body: JSON.stringify({ transaction_ids: transactionIds, category_id: categoryId }),
+  });
+
 export const importCSV = (file: File, accountId: number) => {
   const formData = new FormData();
   formData.append('file', file);

@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import type { Transaction } from '@/api/client';
+import type { SelectionState } from '@/components/TransactionTable';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useCategories } from '@/hooks/useCategories';
 import {
   useTransactionList, useCreateTransaction, useUpdateTransaction, useDeleteTransaction,
+  useBulkUpdateCategory,
 } from '@/hooks/useTransactions';
 import TransactionForm from '@/components/TransactionForm';
 import TransactionTable from '@/components/TransactionTable';
@@ -18,12 +20,14 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
+
+const EMPTY_SELECTION: SelectionState = { mode: 'none', ids: new Set() };
 
 export default function Transactions() {
   const { data: accounts = [] } = useAccounts();
@@ -42,6 +46,15 @@ export default function Transactions() {
   const [filterAccount, setFilterAccount] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [search, setSearch] = useState('');
+
+  // Selection
+  const [selection, setSelection] = useState<SelectionState>(EMPTY_SELECTION);
+  const [bulkCategoryId, setBulkCategoryId] = useState<string>('__none__');
+
+  // Clear selection when filters or month change
+  useEffect(() => {
+    setSelection(EMPTY_SELECTION);
+  }, [currentYear, currentMonth, filterAccount, filterCategory, search]);
 
   const prevMonth = () => {
     if (currentMonth === 0) {
@@ -88,6 +101,7 @@ export default function Transactions() {
   const createMutation = useCreateTransaction();
   const updateMutation = useUpdateTransaction();
   const deleteMutation = useDeleteTransaction();
+  const bulkMutation = useBulkUpdateCategory();
 
   const handleSubmit = async (txnData: {
     account_id: number;
@@ -106,13 +120,38 @@ export default function Transactions() {
     setEditing(null);
   };
 
-  const handleCategoryChange = async (txnId: number, categoryId: number | null) => {
-    await updateMutation.mutateAsync({ id: txnId, data: { category_id: categoryId } as Partial<Transaction> });
-  };
+  const updateMutationRef = useRef(updateMutation);
+  updateMutationRef.current = updateMutation;
+  const deleteMutationRef = useRef(deleteMutation);
+  deleteMutationRef.current = deleteMutation;
 
-  const handleDelete = async (id: number) => {
+  const handleCategoryChange = useCallback(async (txnId: number, categoryId: number | null) => {
+    await updateMutationRef.current.mutateAsync({ id: txnId, data: { category_id: categoryId } as Partial<Transaction> });
+  }, []);
+
+  const handleDelete = useCallback(async (id: number) => {
     if (!confirm('Delete this transaction?')) return;
-    await deleteMutation.mutateAsync(id);
+    await deleteMutationRef.current.mutateAsync(id);
+  }, []);
+
+  const handleEdit = useCallback((txn: Transaction) => {
+    setEditing(txn);
+    setShowForm(true);
+  }, []);
+
+  // Compute selected count and IDs for bulk action
+  const selectedCount = selection.mode === 'all' ? transactions.length
+    : selection.mode === 'some' ? selection.ids.size
+    : 0;
+
+  const handleBulkAssign = async () => {
+    const categoryId = bulkCategoryId === '__none__' ? null : Number(bulkCategoryId);
+    const ids = selection.mode === 'all'
+      ? transactions.map((t) => t.id)
+      : Array.from(selection.ids);
+    await bulkMutation.mutateAsync({ transactionIds: ids, categoryId });
+    setSelection(EMPTY_SELECTION);
+    setBulkCategoryId('__none__');
   };
 
   return (
@@ -202,6 +241,7 @@ export default function Transactions() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all__">All</SelectItem>
+                <SelectItem value="none">Uncategorized</SelectItem>
                 {categories.map((c) => (
                   <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                 ))}
@@ -210,12 +250,23 @@ export default function Transactions() {
           </div>
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Search</Label>
-            <Input
-              placeholder="Search descriptions..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-8 text-sm w-48"
-            />
+            <div className="relative">
+              <Input
+                placeholder="Search descriptions..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 text-sm w-48 pr-7"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
           </div>
           {(filterAccount || filterCategory || search) && (
             <Button
@@ -229,6 +280,32 @@ export default function Transactions() {
         </CardContent>
       </Card>
 
+      {/* Bulk category bar */}
+      {selectedCount > 0 && (
+        <Card className="mb-4 py-2">
+          <CardContent className="flex items-center gap-3">
+            <span className="text-sm font-medium">{selectedCount} selected</span>
+            <Select value={bulkCategoryId} onValueChange={setBulkCategoryId}>
+              <SelectTrigger size="sm" className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Uncategorized</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button size="sm" onClick={handleBulkAssign} disabled={bulkMutation.isPending}>
+              {bulkMutation.isPending ? 'Assigning...' : 'Assign'}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelection(EMPTY_SELECTION)}>
+              Clear
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <TransactionTable
         transactions={transactions}
         categories={categories}
@@ -236,9 +313,11 @@ export default function Transactions() {
         loadingMore={isFetchingNextPage}
         hasMore={!!hasNextPage}
         onLoadMore={() => fetchNextPage()}
-        onEdit={(txn) => { setEditing(txn); setShowForm(true); }}
+        onEdit={handleEdit}
         onDelete={handleDelete}
         onCategoryChange={handleCategoryChange}
+        selection={selection}
+        onSelectionChange={setSelection}
       />
     </div>
   );

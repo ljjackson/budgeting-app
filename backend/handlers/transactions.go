@@ -18,7 +18,11 @@ func ListTransactions(c *gin.Context) {
 		query = query.Where("account_id = ?", accountID)
 	}
 	if categoryID := c.Query("category_id"); categoryID != "" {
-		query = query.Where("category_id = ?", categoryID)
+		if categoryID == "none" {
+			query = query.Where("category_id IS NULL")
+		} else {
+			query = query.Where("category_id = ?", categoryID)
+		}
 	}
 	if dateFrom := c.Query("date_from"); dateFrom != "" {
 		query = query.Where("date >= ?", dateFrom)
@@ -137,6 +141,30 @@ func DeleteTransaction(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Transaction deleted"})
+}
+
+func BulkUpdateCategory(c *gin.Context) {
+	var input struct {
+		TransactionIDs []uint `json:"transaction_ids" binding:"required"`
+		CategoryID     *uint  `json:"category_id"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if len(input.TransactionIDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "transaction_ids must not be empty"})
+		return
+	}
+
+	result := database.DB.Model(&models.Transaction{}).
+		Where("id IN ?", input.TransactionIDs).
+		Update("category_id", input.CategoryID)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update transactions"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"updated": result.RowsAffected})
 }
 
 func ImportCSV(c *gin.Context) {

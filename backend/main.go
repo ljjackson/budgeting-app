@@ -37,6 +37,7 @@ func main() {
 		api.POST("/transactions", handlers.CreateTransaction)
 		api.PUT("/transactions/:id", handlers.UpdateTransaction)
 		api.DELETE("/transactions/:id", handlers.DeleteTransaction)
+		api.PUT("/transactions/bulk-category", handlers.BulkUpdateCategory)
 		api.POST("/transactions/import", handlers.ImportCSV)
 
 		api.GET("/reports/by-category", handlers.ReportByCategory)

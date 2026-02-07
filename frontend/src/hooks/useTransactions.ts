@@ -2,7 +2,7 @@ import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-q
 import type { Account, Transaction, PaginatedTransactions } from '@/api/client';
 import {
   getTransactions, createTransaction, updateTransaction, deleteTransaction,
-  importCSV,
+  importCSV, bulkUpdateCategory,
 } from '@/api/client';
 import { queryKeys } from './queryKeys';
 
@@ -65,6 +65,18 @@ export function useDeleteTransaction() {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all });
+    },
+  });
+}
+
+export function useBulkUpdateCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ transactionIds, categoryId }: { transactionIds: number[]; categoryId: number | null }) =>
+      bulkUpdateCategory(transactionIds, categoryId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
     },
   });
 }
