@@ -16,10 +16,22 @@ type CreateAccountInput struct {
 	StartingBalance *int64 `json:"starting_balance"`
 }
 
+type AccountResponse struct {
+	models.Account
+	HasTransactions bool `json:"has_transactions"`
+}
+
 func ListAccounts(c *gin.Context) {
 	accounts := []models.Account{}
 	database.DB.Order("name").Find(&accounts)
-	c.JSON(http.StatusOK, accounts)
+
+	results := make([]AccountResponse, len(accounts))
+	for i, a := range accounts {
+		var exists bool
+		database.DB.Raw("SELECT EXISTS(SELECT 1 FROM transactions WHERE account_id = ?)", a.ID).Scan(&exists)
+		results[i] = AccountResponse{Account: a, HasTransactions: exists}
+	}
+	c.JSON(http.StatusOK, results)
 }
 
 func CreateAccount(c *gin.Context) {
@@ -38,10 +50,16 @@ func CreateAccount(c *gin.Context) {
 			return err
 		}
 		if input.StartingBalance != nil && *input.StartingBalance != 0 {
+			amount := *input.StartingBalance
+			txType := "income"
+			if amount < 0 {
+				amount = -amount
+				txType = "expense"
+			}
 			tx := models.Transaction{
 				AccountID:   account.ID,
-				Amount:      *input.StartingBalance,
-				Type:        "income",
+				Amount:      amount,
+				Type:        txType,
 				Description: "Starting balance",
 				Date:        time.Now().Format("2006-01-02"),
 			}
@@ -92,6 +110,12 @@ func DeleteAccount(c *gin.Context) {
 	var account models.Account
 	if err := database.DB.First(&account, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+		return
+	}
+	var count int64
+	database.DB.Model(&models.Transaction{}).Where("account_id = ?", account.ID).Count(&count)
+	if count > 0 {
+		c.JSON(http.StatusConflict, gin.H{"error": "Cannot delete account with transactions"})
 		return
 	}
 	if err := database.DB.Delete(&account).Error; err != nil {

@@ -60,7 +60,6 @@ export default function AccountForm({ account, onSubmit, onCancel }: Props) {
           <Input
             type="number"
             step="0.01"
-            min="0"
             value={startingBalance}
             onChange={(e) => setStartingBalance(e.target.value)}
             placeholder="0.00"

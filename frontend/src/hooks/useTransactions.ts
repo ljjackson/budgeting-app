@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Transaction, PaginatedTransactions } from '@/api/client';
+import type { Account, Transaction, PaginatedTransactions } from '@/api/client';
 import {
   getTransactions, createTransaction, updateTransaction, deleteTransaction,
   importCSV,
@@ -31,9 +31,16 @@ export function useCreateTransaction() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: Partial<Transaction>) => createTransaction(data),
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
+      if (variables.account_id) {
+        queryClient.setQueryData<Account[]>(queryKeys.accounts.all, (old) =>
+          old?.map((a) =>
+            a.id === variables.account_id ? { ...a, has_transactions: true } : a
+          ),
+        );
+      }
     },
   });
 }
@@ -57,6 +64,7 @@ export function useDeleteTransaction() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all });
     },
   });
 }
@@ -66,9 +74,14 @@ export function useImportCSV() {
   return useMutation({
     mutationFn: ({ file, accountId }: { file: File; accountId: number }) =>
       importCSV(file, accountId),
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
+      queryClient.setQueryData<Account[]>(queryKeys.accounts.all, (old) =>
+        old?.map((a) =>
+          a.id === variables.accountId ? { ...a, has_transactions: true } : a
+        ),
+      );
     },
   });
 }

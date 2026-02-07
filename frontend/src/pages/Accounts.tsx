@@ -30,7 +30,13 @@ export default function Accounts() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this account?')) return;
-    await deleteMutation.mutateAsync(id);
+    try {
+      await deleteMutation.mutateAsync(id);
+    } catch (err) {
+      if (err instanceof Error && err.message === 'Cannot delete account with transactions') {
+        alert('Cannot delete this account because it has transactions. Delete the transactions first.');
+      }
+    }
   };
 
   return (
@@ -66,7 +72,12 @@ export default function Accounts() {
               <div className="flex items-center gap-3">
                 <div>
                   <div className="font-medium">{account.name}</div>
-                  <Badge variant="secondary" className="mt-1">{account.type}</Badge>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="secondary">{account.type}</Badge>
+                    {account.has_transactions && (
+                      <span className="text-xs text-muted-foreground">Has transactions</span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -81,6 +92,8 @@ export default function Accounts() {
                   variant="ghost"
                   size="sm"
                   className="text-destructive"
+                  disabled={account.has_transactions}
+                  title={account.has_transactions ? 'Delete transactions first' : undefined}
                   onClick={() => handleDelete(account.id)}
                 >
                   Delete

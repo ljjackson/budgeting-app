@@ -18,6 +18,7 @@ export interface Account {
   id: number;
   name: string;
   type: string;
+  has_transactions: boolean;
   created_at: string;
   updated_at: string;
 }
