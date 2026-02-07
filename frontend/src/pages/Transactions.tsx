@@ -136,7 +136,7 @@ export default function Transactions() {
   if (isError) {
     return (
       <div>
-        <h1 className="text-2xl font-bold mb-4">Transactions</h1>
+        <h1 className="text-2xl font-bold tracking-tight mb-4">Transactions</h1>
         <p className="text-destructive">Failed to load transactions: {error?.message}</p>
       </div>
     );
@@ -145,7 +145,7 @@ export default function Transactions() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6 pb-4 border-b">
-        <h1 className="text-2xl font-bold">Transactions</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Transactions</h1>
         <div className="flex items-center gap-4">
           <MonthNavigator
             currentMonth={currentMonth}
@@ -266,7 +266,7 @@ export default function Transactions() {
 
       {/* Bulk category bar */}
       {selectedCount > 0 && (
-        <Card className="mb-4 py-2 gap-0">
+        <Card className="mb-4 py-2 gap-0" style={{ animation: 'slide-down 0.2s ease-out' }}>
           <CardContent className="px-4 flex items-center gap-3">
             <span className="text-sm font-medium">{selectedCount} selected</span>
             <Select value={bulkCategoryId} onValueChange={setBulkCategoryId}>

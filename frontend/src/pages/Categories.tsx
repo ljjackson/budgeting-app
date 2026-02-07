@@ -35,7 +35,7 @@ export default function Categories() {
   if (isError) {
     return (
       <div>
-        <h1 className="text-2xl font-bold mb-4">Categories</h1>
+        <h1 className="text-2xl font-bold tracking-tight mb-4">Categories</h1>
         <p className="text-destructive">Failed to load categories: {error?.message}</p>
       </div>
     );
@@ -44,7 +44,7 @@ export default function Categories() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6 pb-4 border-b">
-        <h1 className="text-2xl font-bold">Categories</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Categories</h1>
         <Button onClick={() => { setEditing(null); setShowForm(true); }}>
           Add Category
         </Button>
@@ -69,7 +69,11 @@ export default function Categories() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {categories.map((cat) => (
-          <Card key={cat.id} className="py-2 gap-0">
+          <Card
+            key={cat.id}
+            className="py-2 gap-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/5 border-l-[3px]"
+            style={{ borderLeftColor: cat.colour }}
+          >
             <CardContent className="px-3 flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: cat.colour }} />

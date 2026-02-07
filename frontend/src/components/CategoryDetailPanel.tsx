@@ -133,12 +133,15 @@ export default function CategoryDetailPanel({
   const progressRatio = category.assigned > 0 ? activityAbs / category.assigned : 0;
   const progressPercent = Math.min(progressRatio * 100, 100);
   const progressColor =
-    progressRatio > 1 ? 'bg-red-500' :
-    progressRatio >= 0.8 ? 'bg-yellow-500' :
-    'bg-green-500';
+    progressRatio > 1 ? 'bg-red-500 dark:bg-red-400' :
+    progressRatio >= 0.8 ? 'bg-amber-500 dark:bg-amber-400' :
+    'bg-emerald-500 dark:bg-emerald-400';
 
   return createPortal(
-    <div className="w-[380px] shrink-0 border-l bg-background overflow-y-auto">
+    <div
+      className="w-[380px] shrink-0 border-l bg-background overflow-y-auto"
+      style={{ animation: 'slide-in-right 0.25s ease-out' }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-2 min-w-0">
@@ -179,7 +182,7 @@ export default function CategoryDetailPanel({
             ) : (
               <button
                 type="button"
-                className="text-sm font-medium cursor-pointer hover:underline"
+                className="text-sm font-medium tabular-nums cursor-pointer hover:underline"
                 onClick={startEditing}
               >
                 {formatCurrency(category.assigned)}
@@ -188,13 +191,13 @@ export default function CategoryDetailPanel({
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Activity</span>
-            <span className="text-sm font-medium">{formatCurrency(category.activity)}</span>
+            <span className="text-sm font-medium tabular-nums">{formatCurrency(category.activity)}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Available</span>
             <span className={cn(
-              'text-sm font-medium',
-              category.available >= 0 ? 'text-green-600' : 'text-red-600'
+              'text-sm font-medium tabular-nums',
+              category.available >= 0 ? 'text-positive' : 'text-negative'
             )}>
               {formatCurrency(category.available)}
             </span>
@@ -206,14 +209,14 @@ export default function CategoryDetailPanel({
           <div className="space-y-1">
             <div className="h-2 rounded-full bg-muted overflow-hidden">
               <div
-                className={cn('h-full rounded-full transition-all', progressColor)}
+                className={cn('h-full rounded-full transition-all duration-700 ease-out', progressColor)}
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
             <p className="text-xs text-muted-foreground">
               {formatCurrency(activityAbs)} of {formatCurrency(category.assigned)} spent
               {progressRatio > 1 && (
-                <span className="text-red-600 font-medium"> (overspent)</span>
+                <span className="text-negative font-medium"> (overspent)</span>
               )}
             </p>
           </div>
@@ -269,7 +272,7 @@ export default function CategoryDetailPanel({
                 <span className="text-xs text-muted-foreground">
                   {TARGET_TYPE_LABELS[category.target_type as TargetType] ?? category.target_type}
                 </span>
-                <span className="text-sm font-medium">{formatCurrency(category.target_amount ?? 0)}</span>
+                <span className="text-sm font-medium tabular-nums">{formatCurrency(category.target_amount ?? 0)}</span>
               </div>
               {category.target_date && (
                 <div className="flex items-center justify-between">
@@ -280,11 +283,11 @@ export default function CategoryDetailPanel({
               {category.underfunded != null && category.underfunded > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Underfunded</span>
-                  <span className="text-sm font-medium text-yellow-600">{formatCurrency(category.underfunded)}</span>
+                  <span className="text-sm font-medium text-warning tabular-nums">{formatCurrency(category.underfunded)}</span>
                 </div>
               )}
               {category.underfunded != null && category.underfunded === 0 && (
-                <p className="text-xs text-green-600">Fully funded this month</p>
+                <p className="text-xs text-positive">Fully funded this month</p>
               )}
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={startEditingTarget}>Edit</Button>
@@ -321,8 +324,8 @@ export default function CategoryDetailPanel({
                     <p className="text-xs text-muted-foreground">{formatDate(tx.date)}</p>
                   </div>
                   <span className={cn(
-                    'text-sm font-medium shrink-0',
-                    tx.type === 'expense' ? 'text-red-600' : 'text-green-600'
+                    'text-sm font-medium shrink-0 tabular-nums',
+                    tx.type === 'expense' ? 'text-negative' : 'text-positive'
                   )}>
                     {formatCurrency(tx.amount)}
                   </span>

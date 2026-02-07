@@ -42,7 +42,7 @@ export default function Accounts() {
   if (isError) {
     return (
       <div>
-        <h1 className="text-2xl font-bold mb-4">Accounts</h1>
+        <h1 className="text-2xl font-bold tracking-tight mb-4">Accounts</h1>
         <p className="text-destructive">Failed to load accounts: {error?.message}</p>
       </div>
     );
@@ -51,7 +51,7 @@ export default function Accounts() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6 pb-4 border-b">
-        <h1 className="text-2xl font-bold">Accounts</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Accounts</h1>
         <Button onClick={() => { setEditing(null); setShowForm(true); }}>
           Add Account
         </Button>
@@ -76,7 +76,7 @@ export default function Accounts() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {accounts.map((account) => (
-          <Card key={account.id} className="py-3 gap-0">
+          <Card key={account.id} className="py-3 gap-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/5 border-l-[3px] border-l-primary">
             <CardContent className="px-4">
               <div className="flex justify-between items-start mb-2">
                 <div className="font-medium">{account.name}</div>

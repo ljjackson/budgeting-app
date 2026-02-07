@@ -38,7 +38,7 @@ export default function Reports() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6 pb-4 border-b">
-        <h1 className="text-2xl font-bold">Reports</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
         {!customRange && (
           <MonthNavigator
             currentMonth={currentMonth}

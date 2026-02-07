@@ -74,7 +74,7 @@ export default function CsvImport({ accounts, onImported }: Props) {
           {importMutation.isPending ? 'Importing...' : 'Import'}
         </Button>
       </div>
-      {result && <p className="text-sm text-green-600">{result}</p>}
+      {result && <p className="text-sm text-positive">{result}</p>}
       {error && <p className="text-sm text-destructive">{error}</p>}
     </form>
   );

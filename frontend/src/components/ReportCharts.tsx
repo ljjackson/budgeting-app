@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/chart';
 import type { ChartConfig } from '@/components/ui/chart';
 
-const DEFAULT_COLOURS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
+const DEFAULT_COLOURS = ['#6D8EF6', '#F67171', '#4ADE80', '#FACC15', '#A78BFA', '#F472B6', '#22D3EE', '#A3E635'];
 
 interface CategoryChartProps {
   data: CategoryReport[];
@@ -68,7 +68,7 @@ export function CategoryChart({ data }: CategoryChartProps) {
                     />
                   }
                 />
-                <Bar dataKey="value" radius={4}>
+                <Bar dataKey="value" radius={4} animationDuration={800}>
                   {chartData.map((entry, i) => (
                     <Cell key={i} fill={entry.fill} />
                   ))}
@@ -85,6 +85,7 @@ export function CategoryChart({ data }: CategoryChartProps) {
                   cy="50%"
                   outerRadius={100}
                   innerRadius={40}
+                  animationDuration={800}
                 >
                   {chartData.map((entry, i) => (
                     <Cell key={i} fill={entry.fill} />
@@ -159,7 +160,7 @@ export function AccountChart({ data }: AccountChartProps) {
                   />
                 }
               />
-              <Bar dataKey="value" radius={4}>
+              <Bar dataKey="value" radius={4} animationDuration={800}>
                 {chartData.map((entry, i) => (
                   <Cell key={i} fill={entry.fill} />
                 ))}

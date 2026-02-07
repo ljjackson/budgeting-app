@@ -18,7 +18,7 @@ export default function MonthNavigator({ currentMonth, currentYear, onPrev, onNe
       <Button variant="outline" size="icon-sm" onClick={onPrev}>
         <ChevronLeft className="h-4 w-4" />
       </Button>
-      <span className="w-48 text-center font-medium">
+      <span className="w-48 text-center font-medium tabular-nums">
         {MONTH_NAMES[currentMonth]} {currentYear}
       </span>
       <Button variant="outline" size="icon-sm" onClick={onNext} disabled={!canGoNext}>
